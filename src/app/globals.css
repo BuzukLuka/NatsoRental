@@ -1,26 +1,76 @@
+/* Tailwind v4 */
 @import "tailwindcss";
 
+/* Theme tokens (CSS vars so we can use arbitrary values in Tailwind) */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --brand-yellow: #ffd12e;
+  --ink: #111111;
+  --paper: #ffffff;
+  --shadow-soft: 0 8px 24px rgba(0, 0, 0, 0.08);
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+html,
+body {
+  height: 100%;
+}
+body {
+  background: var(--paper);
+  color: var(--ink);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+/* Reusable UI (use arbitrary values so we don't need tailwind.config) */
+.btn {
+  @apply inline-flex items-center justify-center rounded-xl px-5 py-2.5 font-semibold transition;
+}
+.btn-primary {
+  /* bg-brand-yellow -> bg-[var(--brand-yellow)], shadow-soft -> shadow-[var(--shadow-soft)] */
+  @apply text-black hover:brightness-95 active:brightness-90;
+  background: var(--brand-yellow);
+  box-shadow: var(--shadow-soft);
+}
+.btn-outline {
+  @apply border border-black/10 bg-white hover:bg-black/5;
+}
+.input {
+  @apply w-full rounded-xl border border-black/10 bg-white px-4 py-2.5 outline-none focus:ring-2;
+  /* Ring color via arbitrary value */
+  --tw-ring-color: var(--brand-yellow);
+}
+.select {
+  @apply w-full rounded-xl border border-black/10 bg-white px-4 py-2.5 outline-none focus:ring-2;
+  --tw-ring-color: var(--brand-yellow);
+}
+.badge {
+  @apply inline-flex items-center gap-1 rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium;
+}
+.card {
+  @apply rounded-2xl border border-black/10 bg-white;
+  box-shadow: var(--shadow-soft);
+}
+
+/* Fancy underline */
+.u {
+  background: linear-gradient(
+    120deg,
+    var(--brand-yellow) 0,
+    var(--brand-yellow) 100%
+  );
+  background-size: 100% 30%;
+  background-repeat: no-repeat;
+  background-position: 0 90%;
+}
+
+/* Entrance animation */
+@keyframes fadeUp {
+  0% {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+.reveal {
+  animation: fadeUp 0.6s ease-out both;
 }
