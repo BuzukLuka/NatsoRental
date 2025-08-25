@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { StoreProvider } from "@/lib/store";
 import Header from "@/components/layouts/Header";
 import Footer from "@/components/layouts/Footer";
+import "leaflet/dist/leaflet.css";
 
 export const metadata: Metadata = {
   title: "Natso Rental – Calgary Rooms",
