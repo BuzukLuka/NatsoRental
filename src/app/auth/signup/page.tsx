@@ -3,15 +3,24 @@ import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
 import { useStore } from "@/lib/store";
 
+const ROLES = ["renter", "landlord", "investor"] as const;
+type Role = (typeof ROLES)[number];
+
+function asRole(v: unknown): Role {
+  return ROLES.includes(v as Role) ? (v as Role) : "renter";
+}
+
 export default function SignupPage() {
   const { signup } = useStore();
+
   async function submit(formData: FormData) {
     signup({
-      name: String(formData.get("name") || ""),
-      email: String(formData.get("email") || ""),
-      role: String(formData.get("role") || "renter") as any,
+      name: String(formData.get("name") ?? ""),
+      email: String(formData.get("email") ?? ""),
+      role: asRole(formData.get("role")),
     });
   }
+
   return (
     <div className="mx-auto max-w-sm p-4">
       <h1 className="text-2xl font-extrabold">Create account</h1>

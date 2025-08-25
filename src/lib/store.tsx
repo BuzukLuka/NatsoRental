@@ -18,18 +18,25 @@ const PAYKEY = "natso.payments";
 const RESKEY = "natso.reservations";
 const MKEY = "natso.maintenance";
 
+// Local role union (decouples from User type)
+const ROLES = ["renter", "landlord", "investor"] as const;
+type Role = (typeof ROLES)[number];
+
+// Replace `any` with a safe payload type
+type ApplicationPayload = Record<string, unknown>;
+
 export type Store = {
   properties: Property[];
   filters: Filters;
   setFilters: (patch: Partial<Filters>) => void;
   getPropertyById: (id: string) => Property | undefined;
 
-  me: User;
-  login: (v: { email: string; role: User["role"] }) => void;
-  signup: (v: { name: string; email: string; role: User["role"] }) => void;
+  me: User | null;
+  login: (v: { email: string; role: Role }) => void;
+  signup: (v: { name: string; email: string; role: Role }) => void;
   logout: () => void;
 
-  submitApplication: (payload: any) => void;
+  submitApplication: (payload: ApplicationPayload) => void;
   reserve: (propertyId: string) => void;
   myReservations: () => Reservation[];
 
@@ -50,7 +57,7 @@ const Ctx = createContext<Store | null>(null);
 export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [properties, setProperties] = useState<Property[]>([]);
   const [filters, setFiltersState] = useState<Filters>({ q: "" });
-  const [me, setMe] = useState<User>(null);
+  const [me, setMe] = useState<User | null>(null);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [maintenance, setMaintenance] = useState<Maintenance[]>([]);
@@ -58,6 +65,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   // init
   useEffect(() => {
     if (typeof window === "undefined") return;
+
     // Seed properties
     const rawP = localStorage.getItem(PKEY);
     if (!rawP) localStorage.setItem(PKEY, JSON.stringify(generateSeed()));
@@ -88,12 +96,17 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
       me,
       login: ({ email, role }) => {
-        const u: User = { id: uid(), name: email.split("@")[0], email, role };
+        const u = {
+          id: uid(),
+          name: email.split("@")[0],
+          email,
+          role,
+        } as unknown as User; // keep Store.me as User | null
         setMe(u);
         setUser(u);
       },
       signup: ({ name, email, role }) => {
-        const u: User = { id: uid(), name, email, role };
+        const u = { id: uid(), name, email, role } as unknown as User;
         setMe(u);
         setUser(u);
       },
@@ -158,6 +171,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           common: { kitchen: true, laundry: true, parking: false },
           mapX: 50,
           mapY: 50,
+          lat: 0,
+          lng: 0,
         };
         setProperties((prev) => [next, ...prev]);
         alert("Listing created.");

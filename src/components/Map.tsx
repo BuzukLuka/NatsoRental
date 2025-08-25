@@ -12,6 +12,10 @@ const Popup         = dynamic(async () => (await import("react-leaflet")).Popup,
 // Leaflet CSS is safe to import globally
 import "leaflet/dist/leaflet.css";
 
+type ImgMod = string | { default: string };
+const toUrl = (m: ImgMod): string =>
+  typeof m === "string" ? m : m.default;
+
 export default function Map({ items }: { items: Property[] }) {
   useEffect(() => {
     // dynamically import leaflet and patch icon URLs on client only

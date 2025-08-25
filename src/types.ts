@@ -29,11 +29,13 @@ export type Property = {
   mapY: number;
 };
 
+export type Role = "renter" | "landlord" | "investor";
+
 export type User = {
   id: string;
   name: string;
   email: string;
-  role: "renter" | "landlord" | "investor";
+  role: Role;
 } | null;
 export type Payment = { id: string; amount: number; date: string };
 export type Reservation = {
