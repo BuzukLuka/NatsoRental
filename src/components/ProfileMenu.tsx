@@ -103,9 +103,7 @@ export default function ProfileMenu() {
   const panelRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
-    };
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
     const onClick = (e: MouseEvent) => {
       const t = e.target as Node;
       if (!panelRef.current || !btnRef.current) return;
@@ -122,23 +120,27 @@ export default function ProfileMenu() {
     };
   }, [open]);
 
+  const close = () => setOpen(false);
+
   return (
     <div className="relative">
+      {/* Chip-style Account button (бусадтай ижил) */}
       <button
         ref={btnRef}
         onClick={() => setOpen((s) => !s)}
         aria-haspopup="menu"
         aria-expanded={open}
-        className="inline-flex items-center gap-2 rounded-full border-2 border-black bg-white px-2 py-1 shadow-[3px_3px_0_#000] transition active:translate-y-[1px] active:shadow-[1px_1px_0_#000]"
+        className="hidden md:inline-flex items-center gap-2 h-10 rounded-xl border border-black/10 bg-[#FFD12E] px-3 text-sm font-semibold
+                   hover:shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/10"
       >
         <Image
-          src="/avatar-placeholder.png"
-          alt="Profile"
-          width={28}
-          height={28}
-          className="rounded-full border border-black/10"
+          src="/Profile_avatar_placeholder_large.png"
+          alt="" /* label байна */
+          width={20}
+          height={20}
+          className="rounded-full border border-black/20 shrink-0"
         />
-        <span className="hidden text-sm font-bold md:inline">Account</span>
+        <span>Account</span>
       </button>
 
       {/* Dropdown */}
@@ -147,11 +149,11 @@ export default function ProfileMenu() {
           ref={panelRef}
           role="menu"
           aria-label="Profile menu"
-          className="absolute right-0 mt-2 w-[280px] origin-top-right rounded-2xl border-2 border-black bg-white p-2 shadow-[8px_8px_0_#000] focus:outline-none"
+          className="absolute right-0 z-50 mt-2 w-[280px] origin-top-right rounded-2xl border border-black/10 bg-white p-2 shadow-lg"
         >
-          <div className="flex items-center gap-3 rounded-xl border border-black/10 bg-white px-3 py-2">
+          <div className="flex items-center gap-3 rounded-xl border border-black/20 bg-white px-3 py-2">
             <Image
-              src="/avatar-placeholder.png"
+              src="/Profile_avatar_placeholder_large.png"
               alt="You"
               width={40}
               height={40}
@@ -173,7 +175,7 @@ export default function ProfileMenu() {
                   className="my-1 border-t border-dashed border-black/10"
                 />
               ) : (
-                <MenuLink key={item.href} item={item} />
+                <MenuLink key={item.href} item={item} onSelect={close} />
               )
             )}
           </ul>
@@ -188,7 +190,7 @@ export default function ProfileMenu() {
                   className="my-1 border-t border-dashed border-black/10"
                 />
               ) : (
-                <MenuLink key={item.href} item={item} />
+                <MenuLink key={item.href} item={item} onSelect={close} />
               )
             )}
           </ul>
@@ -198,23 +200,30 @@ export default function ProfileMenu() {
   );
 }
 
-function MenuLink({ item }: { item: Extract<MenuItem, { type: "link" }> }) {
+function MenuLink({
+  item,
+  onSelect,
+}: {
+  item: Extract<MenuItem, { type: "link" }>;
+  onSelect: () => void;
+}) {
+  const base =
+    "group relative flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-semibold transition";
+  const normal = "bg-white hover:bg-black/[0.03]";
+  const accent = "bg-neutral-900 text-white hover:bg-neutral-800";
+
   return (
     <li>
       <Link
         href={item.href}
         role="menuitem"
-        className={[
-          "group relative flex items-center gap-3 rounded-xl border border-black/10 px-3 py-2 text-sm font-semibold transition",
-          item.accent
-            ? "bg-[#FFD12E] text-black shadow-[4px_4px_0_#000] active:translate-y-[1px] active:shadow-[2px_2px_0_#000]"
-            : "bg-white hover:shadow",
-        ].join(" ")}
+        className={[base, item.accent ? accent : normal].join(" ")}
+        onClick={onSelect}
       >
         <span className="grid place-items-center">{item.icon}</span>
         <span className="flex-1">{item.label}</span>
         {item.badge && (
-          <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-black/80 px-1 text-[10px] font-bold text-white">
+          <span className="inline-flex min-w-5 items-center justify-center rounded-full bg-brand-yellow px-1 text-[10px] font-bold leading-none text-black">
             {item.badge}
           </span>
         )}
