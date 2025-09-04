@@ -12,7 +12,7 @@ export default function HomePage() {
       {/* HERO */}
       <section className="relative isolate overflow-hidden">
         <Image
-          src="/hero.jpg"
+          src="/hero.png"
           alt="Calgary"
           width={2400}
           height={1200}
