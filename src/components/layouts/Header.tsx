@@ -70,16 +70,6 @@ export default function Header() {
           </Link>
         </div>
 
-        {/* Center: Search (placeholder) */}
-        <div className="hidden flex-1 md:block">
-          <div className="relative">
-            <div className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2">
-              <Search size={18} />
-            </div>
-            <div className="pl-9">{/* <SearchBar /> */}</div>
-          </div>
-        </div>
-
         {/* Right: Actions */}
         <nav className="flex items-center gap-1 md:gap-2">
           <Link
