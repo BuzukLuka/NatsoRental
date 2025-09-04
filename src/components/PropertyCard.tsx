@@ -1,21 +1,46 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Badge from "./ui/Badge";
 import type { Property } from "@/types";
+import WishlistButton from "./WishlistButton";
 
 export default function PropertyCard({ p }: { p: Property }) {
+  const router = useRouter();
+  const open = () => router.push(`/room/${p.id}`);
+
   return (
-    <div className="card overflow-hidden transition hover:-translate-y-0.5 hover:shadow-soft">
+    <div
+      role="link"
+      tabIndex={0}
+      aria-label={`Open ${p.title}`}
+      onClick={open}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          open();
+        }
+      }}
+      className="card overflow-hidden cursor-pointer transition hover:-translate-y-0.5 hover:shadow-soft"
+    >
       <div className="relative h-44 w-full">
         <Image src={p.image} alt={p.title} fill className="object-cover" />
         <div className="absolute left-2 top-2">
           <span className="badge bg-white/90">{p.neighborhood}</span>
         </div>
+
+        {/* ❤️ add/remove */}
+        <div className="absolute right-2 top-2">
+          <WishlistButton p={p} />
+        </div>
       </div>
+
       <div className="p-3">
         <div className="flex items-center justify-between">
-          <div className="font-bold">{p.title}</div>
-          <div className="text-sm">
+          <div className="font-bold line-clamp-1">{p.title}</div>
+          <div className="text-sm shrink-0">
             <strong>${p.priceMonthly}</strong>/mo
           </div>
         </div>
@@ -24,7 +49,13 @@ export default function PropertyCard({ p }: { p: Property }) {
           <span>· {p.tenure}</span>
           {p.pets && <Badge>🐾 Pets</Badge>}
         </div>
-        <Link href={`/room/${p.id}`} className="btn btn-outline mt-3 w-full">
+
+        {/* View товч дархад картын click ажиллахгүй */}
+        <Link
+          href={`/room/${p.id}`}
+          onClick={(e) => e.stopPropagation()}
+          className="btn btn-outline mt-3 w-full"
+        >
           View
         </Link>
       </div>

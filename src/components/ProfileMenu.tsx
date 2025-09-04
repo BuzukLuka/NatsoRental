@@ -53,12 +53,6 @@ const primaryItems: MenuItem[] = [
     icon: <MessageSquare size={16} />,
     badge: "2",
   },
-  {
-    type: "link",
-    href: "/reviews",
-    label: "Reviews",
-    icon: <Star size={16} />,
-  },
 ];
 
 const secondaryItems: MenuItem[] = [
@@ -84,7 +78,7 @@ const secondaryItems: MenuItem[] = [
   },
   {
     type: "link",
-    href: "/safety",
+    href: "/support",
     label: "Safety & support",
     icon: <Shield size={16} />,
   },

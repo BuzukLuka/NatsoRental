@@ -3,6 +3,7 @@ import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import { useStore } from "@/lib/store";
 import Badge from "@/components/ui/Badge";
+import MiniMap from "@/components/MiniMap";
 
 export default function RoomDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -22,7 +23,7 @@ export default function RoomDetailPage() {
           <div className="mt-2 flex flex-wrap gap-2">
             {p.pets && <Badge>🐾 Pet friendly</Badge>}
             <Badge>🧹 Cleaning {p.cleaning}</Badge>
-            <Badge>📶 Wi‑Fi {p.wifi}</Badge>
+            <Badge>📶 Wi-Fi {p.wifi}</Badge>
             <Badge>🛏️ {p.roomType}</Badge>
           </div>
           <p className="mt-4 text-black/80">{p.description}</p>
@@ -63,6 +64,7 @@ export default function RoomDetailPage() {
               </div>
               <div className="badge">{p.tenure}</div>
             </div>
+
             <button
               className="btn btn-primary mt-4 w-full"
               onClick={() => router.push(`/apply/${p.id}`)}
@@ -75,6 +77,7 @@ export default function RoomDetailPage() {
             >
               Reserve with Deposit
             </button>
+
             <div className="mt-4 rounded-xl bg-yellow-50 p-3 text-sm">
               <strong>Penalties & Deposit:</strong>
               <ul className="ml-5 list-disc">
@@ -83,14 +86,17 @@ export default function RoomDetailPage() {
                 <li>Damage: assessed post inspection</li>
               </ul>
             </div>
+
+            {/* ⬇️ ШИНЭ: Байршлын жижиг газрын зураг */}
+            <MiniMap lat={p.lat} lng={p.lng} title={p.title} />
           </div>
         </aside>
       </div>
 
-      {/* Info sections */}
+      {/* Info sections ... (таны доорх гурав хэвээр) */}
       <div className="mt-10 grid grid-cols-1 gap-4 md:grid-cols-3">
         <div className="card p-4">
-          <h3 className="font-bold">Wi‑Fi Details</h3>
+          <h3 className="font-bold">Wi-Fi Details</h3>
           <p className="mt-2 text-sm text-black/80">
             Provider: {p.wifiVendor} · Speed: {p.wifi}
           </p>

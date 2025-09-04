@@ -65,7 +65,7 @@ export default function Header() {
               priority
             />
             <span className="truncate text-lg font-extrabold md:text-xl">
-              Natso <span className="text-brand-yellow">Rental</span>
+              Natso <span className="text-brand-yellow">Room</span>
             </span>
           </Link>
         </div>
