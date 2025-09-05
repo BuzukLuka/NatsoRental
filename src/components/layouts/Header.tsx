@@ -55,18 +55,14 @@ export default function Header() {
           >
             <Menu size={20} />
           </button>
-          <Link href="/" className="flex items-center gap-2">
+          <Link href="/" className="flex items-center p-2 gap-2">
             <Image
-              src="/logo.png"
-              alt="Natso"
-              width={36}
-              height={36}
-              className="md:h-[48px] md:w-[48px]" // ямар ч урд зайгүй, тогтмол
+              src="/Logo.png"
+              alt="Logo"
+              width={200} // make it bigger (adjust number as needed)
+              height={180}
               priority
             />
-            <span className="truncate text-lg font-extrabold md:text-xl">
-              Natso <span className="text-brand-yellow">Room</span>
-            </span>
           </Link>
         </div>
 
