@@ -51,6 +51,14 @@ export type Maintenance = {
 };
 
 export type Filters = {
+  cityArea: string;
+  monthlyRange: string;
+  petsAllowed: boolean;
+  noPets: any;
+  waitingList: any;
+  contactAdmin: any;
+  signupFee: any;
+  signupFeeAmount: number;
   q: string;
   type?: PType;
   tenure?: Tenure;

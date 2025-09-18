@@ -4,6 +4,7 @@ import SearchBar from "@/components/SearchBar";
 import Steps from "@/components/Steps";
 import PropertyGrid from "@/components/PropertyGrid";
 import { useStore } from "@/lib/store";
+import FiltersBar from "@/components/FiltersBar";
 
 export default function HomePage() {
   const { properties } = useStore();
@@ -33,7 +34,7 @@ export default function HomePage() {
               portal.
             </p>
             <div className="mx-auto mt-6 max-w-2xl">
-              <SearchBar variant="hero" />
+              <FiltersBar />
             </div>
           </div>
         </div>
