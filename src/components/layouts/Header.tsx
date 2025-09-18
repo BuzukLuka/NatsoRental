@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
-import { Menu, Search, Heart, Bell, Plus } from "lucide-react";
+import { Menu, Heart, Bell } from "lucide-react";
 import ProfileMenu from "../ProfileMenu";
 
 function cx(...c: Array<string | false | undefined>) {
@@ -55,11 +55,11 @@ export default function Header() {
           >
             <Menu size={20} />
           </button>
-          <Link href="/" className="flex items-center p-2 gap-2">
+          <Link href="/" className="flex items-center gap-2 p-2">
             <Image
               src="/Logo.png"
               alt="Logo"
-              width={200} // make it bigger (adjust number as needed)
+              width={200}
               height={180}
               priority
             />
@@ -68,14 +68,6 @@ export default function Header() {
 
         {/* Right: Actions */}
         <nav className="flex items-center gap-1 md:gap-2">
-          <Link
-            href="/search"
-            className="md:hidden inline-flex h-10 w-10 items-center justify-center rounded-xl border border-black/10 bg-white"
-            aria-label="Search"
-          >
-            <Search size={18} />
-          </Link>
-
           <Link
             className="hidden rounded-xl border border-black/10 px-3 py-2 text-sm font-semibold transition hover:shadow md:inline-flex"
             href="/browse"
@@ -113,25 +105,21 @@ export default function Header() {
             </span>
           </Link>
 
-          <Link
-            href="/host"
-            className="hidden rounded-xl border border-black/10 px-3 py-2 text-sm font-semibold transition hover:shadow md:inline-flex"
-          >
-            <Plus size={16} />
-            List your place
-          </Link>
-
-          {/* Profile — List your place-ийн яг ард */}
-          <ProfileMenu />
+          {/* Desktop: popover dropdown */}
+          <div className="hidden md:block">
+            <ProfileMenu placement="popover" />
+          </div>
         </nav>
       </div>
 
-      {/* Mobile sheet (анхны SSR дээр ч ижил markup гарна) */}
+      {/* Mobile sheet */}
       <div
         ref={mobileRef}
         className={cx(
           "md:hidden transition-[max-height] overflow-hidden border-b border-black/10",
-          mobileOpen ? "max-h-96" : "max-h-0"
+          mobileOpen
+            ? "max-h-[85vh] overflow-y-auto" // ⬅️ нээгдэх үед: өндөр их + гүйлгэх
+            : "max-h-0 overflow-hidden"
         )}
       >
         <div className="space-y-2 px-3 pb-3 pt-2">
@@ -149,14 +137,9 @@ export default function Header() {
           >
             Landlord
           </Link>
-          <Link
-            href="/host"
-            className="block rounded-xl border border-black/10 bg-white px-3 py-2 font-semibold"
-            onClick={() => setMobileOpen(false)}
-          >
-            List your place
-          </Link>
-          <ProfileMenu />
+
+          {/* ✅ Landlord-ийн доор шар Account товч; дархад цэс нь ДОРОО нээгдэнэ */}
+          <ProfileMenu placement="inline" />
         </div>
       </div>
     </header>

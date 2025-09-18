@@ -7,7 +7,6 @@ import {
   User,
   LogOut,
   Settings,
-  Star,
   Briefcase,
   Heart,
   MessageSquare,
@@ -26,6 +25,12 @@ type MenuItem =
       badge?: string;
     }
   | { type: "separator" };
+
+export type ProfileMenuProps = {
+  /** popover = desktop (absolute), inline = mobile sheet дотор доошоо нээгдэнэ */
+  placement?: "popover" | "inline";
+  className?: string;
+};
 
 const primaryItems: MenuItem[] = [
   {
@@ -91,12 +96,16 @@ const secondaryItems: MenuItem[] = [
   },
 ];
 
-export default function ProfileMenu() {
+export default function ProfileMenu({
+  placement = "popover",
+  className,
+}: ProfileMenuProps) {
   const [open, setOpen] = useState(false);
   const btnRef = useRef<HTMLButtonElement | null>(null);
   const panelRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
+    if (!open || placement === "inline") return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
     const onClick = (e: MouseEvent) => {
       const t = e.target as Node;
@@ -104,92 +113,95 @@ export default function ProfileMenu() {
       if (panelRef.current.contains(t) || btnRef.current.contains(t)) return;
       setOpen(false);
     };
-    if (open) {
-      document.addEventListener("keydown", onKey);
-      document.addEventListener("mousedown", onClick);
-    }
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("mousedown", onClick);
     return () => {
       document.removeEventListener("keydown", onKey);
       document.removeEventListener("mousedown", onClick);
     };
-  }, [open]);
+  }, [open, placement]);
 
   const close = () => setOpen(false);
 
+  const Panel = (
+    <div
+      ref={panelRef}
+      role="menu"
+      aria-label="Profile menu"
+      className={
+        placement === "popover"
+          ? "absolute right-0 z-50 mt-2 w-[280px] origin-top-right rounded-2xl border border-black/10 bg-white p-2 shadow-lg"
+          : "mt-2 w-full rounded-2xl border border-black/10 bg-white p-2 shadow" // ⬅️ w-full
+      }
+    >
+      <div className="flex items-center gap-3 rounded-xl border border-black/20 bg-white px-3 py-2">
+        <Image
+          src="/Profile_avatar_placeholder_large.png"
+          alt="You"
+          width={40}
+          height={40}
+          className="rounded-full border border-black/10"
+        />
+        <div className="min-w-0">
+          <p className="truncate text-sm font-extrabold">Welcome back!</p>
+          <p className="truncate text-xs text-neutral-500">
+            Manage your rentals & trips
+          </p>
+        </div>
+      </div>
+
+      <ul className="mt-2 space-y-1">
+        {primaryItems.map((item, idx) =>
+          item.type === "separator" ? (
+            <li
+              key={`sep-1-${idx}`}
+              className="my-1 border-t border-dashed border-black/10"
+            />
+          ) : (
+            <MenuLink key={item.href} item={item} onSelect={close} />
+          )
+        )}
+      </ul>
+
+      <div className="my-2 border-t border-dashed border-black/10" />
+
+      <ul className="space-y-1">
+        {secondaryItems.map((item, idx) =>
+          item.type === "separator" ? (
+            <li
+              key={`sep-2-${idx}`}
+              className="my-1 border-t border-dashed border-black/10"
+            />
+          ) : (
+            <MenuLink key={item.href} item={item} onSelect={close} />
+          )
+        )}
+      </ul>
+    </div>
+  );
+
   return (
-    <div className="relative">
-      {/* Chip-style Account button (бусадтай ижил) */}
+    <div className={["relative", className].filter(Boolean).join(" ")}>
+      {/* шар Account товч */}
       <button
         ref={btnRef}
         onClick={() => setOpen((s) => !s)}
         aria-haspopup="menu"
         aria-expanded={open}
-        className="hidden md:inline-flex items-center gap-2 h-10 rounded-xl border border-black/10 bg-[#FFD12E] px-3 text-sm font-semibold
-                   hover:shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/10"
+        className="inline-flex h-10 w-full items-center gap-2 rounded-xl border border-black/10 bg-[#FFD12E] px-3 text-sm font-semibold text-black hover:shadow focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-black/10"
       >
         <Image
           src="/Profile_avatar_placeholder_large.png"
-          alt="" /* label байна */
+          alt=""
           width={20}
           height={20}
-          className="rounded-full border border-black/20 shrink-0"
+          className="shrink-0 rounded-full border border-black/20"
         />
         <span>Account</span>
       </button>
 
-      {/* Dropdown */}
-      {open && (
-        <div
-          ref={panelRef}
-          role="menu"
-          aria-label="Profile menu"
-          className="absolute right-0 z-50 mt-2 w-[280px] origin-top-right rounded-2xl border border-black/10 bg-white p-2 shadow-lg"
-        >
-          <div className="flex items-center gap-3 rounded-xl border border-black/20 bg-white px-3 py-2">
-            <Image
-              src="/Profile_avatar_placeholder_large.png"
-              alt="You"
-              width={40}
-              height={40}
-              className="rounded-full border border-black/10"
-            />
-            <div className="min-w-0">
-              <p className="truncate text-sm font-extrabold">Welcome back!</p>
-              <p className="truncate text-xs text-neutral-500">
-                Manage your rentals & trips
-              </p>
-            </div>
-          </div>
-
-          <ul className="mt-2 space-y-1">
-            {primaryItems.map((item, idx) =>
-              item.type === "separator" ? (
-                <li
-                  key={`sep-1-${idx}`}
-                  className="my-1 border-t border-dashed border-black/10"
-                />
-              ) : (
-                <MenuLink key={item.href} item={item} onSelect={close} />
-              )
-            )}
-          </ul>
-
-          <div className="my-2 border-t border-dashed border-black/10" />
-
-          <ul className="space-y-1">
-            {secondaryItems.map((item, idx) =>
-              item.type === "separator" ? (
-                <li
-                  key={`sep-2-${idx}`}
-                  className="my-1 border-t border-dashed border-black/10"
-                />
-              ) : (
-                <MenuLink key={item.href} item={item} onSelect={close} />
-              )
-            )}
-          </ul>
-        </div>
-      )}
+      {/* dropdown: desktop бол absolute, mobile бол inline */}
+      {open && Panel}
     </div>
   );
 }
