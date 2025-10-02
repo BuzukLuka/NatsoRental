@@ -4,10 +4,11 @@ import SearchBar from "@/components/SearchBar";
 import Steps from "@/components/Steps";
 import PropertyGrid from "@/components/PropertyGrid";
 import { useStore } from "@/lib/store";
-import FiltersBar from "@/components/FiltersBar";
+import FiltersBarWrapper from "@/components/FiltersBarWrapper";
 
 export default function HomePage() {
   const { properties } = useStore();
+
   return (
     <div>
       {/* HERO */}
@@ -33,9 +34,9 @@ export default function HomePage() {
               Trusted rentals in Calgary with deposits, policies, and landlord
               portal.
             </p>
-            <div className="mx-auto mt-6 max-w-2xl">
-              <FiltersBar />
-            </div>
+
+            {/* FiltersBar (hero хувилбар) */}
+            <FiltersBarWrapper variant="hero" />
           </div>
         </div>
       </section>
