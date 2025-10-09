@@ -66,3 +66,5 @@ export type Filters = {
   priceMax?: number;
   pets?: boolean;
 };
+
+// Removed duplicate User interface to resolve duplicate identifier error.
