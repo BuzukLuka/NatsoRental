@@ -1,7 +1,7 @@
+import { RoomList } from "@/types/api";
 import PropertyCard from "./PropertyCard";
-import type { Property } from "@/types";
 
-export default function PropertyGrid({ items }: { items: Property[] }) {
+export default function PropertyGrid({ items }: { items: RoomList[] }) {
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
       {items.map((p) => (

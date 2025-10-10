@@ -4,12 +4,13 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Badge from "./ui/Badge";
-import type { Property } from "@/types";
 import WishlistButton from "./WishlistButton";
+import { RoomList } from "@/types/api";
 
-export default function PropertyCard({ p }: { p: Property }) {
+export default function PropertyCard({ p }: { p: RoomList }) {
   const router = useRouter();
   const open = () => router.push(`/room/${p.id}`);
+  console.log("PropertyCard p:", p);
 
   return (
     <div
@@ -26,9 +27,9 @@ export default function PropertyCard({ p }: { p: Property }) {
       className="card overflow-hidden cursor-pointer transition hover:-translate-y-0.5 hover:shadow-soft"
     >
       <div className="relative h-44 w-full">
-        <Image src={p.image} alt={p.title} fill className="object-cover" />
+        <Image src={p?.thumbnail ?? "/default-image.jpg"} alt={p.title} fill className="object-cover" />
         <div className="absolute left-2 top-2">
-          <span className="badge bg-white/90">{p.neighborhood}</span>
+          <span className="badge bg-white/90">{p.address}</span>
         </div>
 
         {/* ❤️ add/remove */}
@@ -41,13 +42,13 @@ export default function PropertyCard({ p }: { p: Property }) {
         <div className="flex items-center justify-between">
           <div className="font-bold line-clamp-1">{p.title}</div>
           <div className="text-sm shrink-0">
-            <strong>${p.priceMonthly}</strong>/mo
+            <strong>${p.price_per_month}</strong>/mo
           </div>
         </div>
         <div className="mt-1 flex flex-wrap gap-2 text-xs text-black/70">
-          <span>{p.roomType}</span>
+          <span>{p.property_type?.name}</span>
           <span>· {p.tenure}</span>
-          {p.pets && <Badge>🐾 Pets</Badge>}
+          {p.pets_allowed && <Badge>🐾 Pets</Badge>}
         </div>
 
         {/* View товч дархад картын click ажиллахгүй */}

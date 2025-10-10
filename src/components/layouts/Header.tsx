@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { Menu, Heart, Bell } from "lucide-react";
 import ProfileMenu from "../ProfileMenu";
+import { useAuth } from "@/providers/AuthProvider";
 
 function cx(...c: Array<string | false | undefined>) {
   return c.filter(Boolean).join(" ");
@@ -14,6 +15,7 @@ export default function Header() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const mobileRef = useRef<HTMLDivElement | null>(null);
+  const { user, isAuthenticated, loading, logout } = useAuth();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 6);
@@ -42,6 +44,8 @@ export default function Header() {
     "sticky top-0 z-[1000] border-b border-black/10 bg-white/80 backdrop-blur";
   const elevated =
     "shadow-[0_6px_0_#00000010] supports-[backdrop-filter]:bg-white/70";
+
+  if (loading) return null; // wait until auth is resolved
 
   return (
     <header className={cx(base, scrolled && elevated)} aria-label="Main header">
@@ -87,28 +91,47 @@ export default function Header() {
             Landlord
           </Link>
 
-          <Link
-            href="/wishlists"
-            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-black/10 bg-white"
-            aria-label="Wishlists"
-          >
-            <Heart size={18} />
-          </Link>
-          <Link
-            href="/notifications"
-            className="relative inline-flex h-10 w-10 items-center justify-center rounded-xl border border-black/10 bg-white"
-            aria-label="Notifications"
-          >
-            <Bell size={18} />
-            <span className="absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-yellow px-1 text-[10px] font-bold leading-none text-black">
-              3
-            </span>
-          </Link>
+          {/* ✅ Conditional section */}
+          {isAuthenticated ? (
+            <>
+              <Link
+                href="/wishlists"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-black/10 bg-white"
+                aria-label="Wishlists"
+              >
+                <Heart size={18} />
+              </Link>
+              <Link
+                href="/notifications"
+                className="relative inline-flex h-10 w-10 items-center justify-center rounded-xl border border-black/10 bg-white"
+                aria-label="Notifications"
+              >
+                <Bell size={18} />
+                <span className="absolute -right-1 -top-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-brand-yellow px-1 text-[10px] font-bold leading-none text-black">
+                  3
+                </span>
+              </Link>
 
-          {/* Desktop: popover dropdown */}
-          <div className="hidden md:block">
-            <ProfileMenu placement="popover" />
-          </div>
+              <div className="hidden md:block">
+                <ProfileMenu placement="popover" />
+              </div>
+            </>
+          ) : (
+            <div className="flex items-center gap-2">
+              <Link
+                href="/login"
+                className="rounded-xl border border-black/10 bg-white px-3 py-2 text-sm font-semibold hover:shadow"
+              >
+                Login
+              </Link>
+              <Link
+                href="/register"
+                className="rounded-xl border border-brand-yellow bg-brand-yellow px-3 py-2 text-sm font-semibold text-black hover:shadow"
+              >
+                Sign up
+              </Link>
+            </div>
+          )}
         </nav>
       </div>
 
@@ -118,7 +141,7 @@ export default function Header() {
         className={cx(
           "md:hidden transition-[max-height] overflow-hidden border-b border-black/10",
           mobileOpen
-            ? "max-h-[85vh] overflow-y-auto" // ⬅️ нээгдэх үед: өндөр их + гүйлгэх
+            ? "max-h-[85vh] overflow-y-auto"
             : "max-h-0 overflow-hidden"
         )}
       >
@@ -138,8 +161,37 @@ export default function Header() {
             Landlord
           </Link>
 
-          {/* ✅ Landlord-ийн доор шар Account товч; дархад цэс нь ДОРОО нээгдэнэ */}
-          <ProfileMenu placement="inline" />
+          {isAuthenticated ? (
+            <>
+              <ProfileMenu placement="inline" />
+              <button
+                onClick={() => {
+                  logout();
+                  setMobileOpen(false);
+                }}
+                className="w-full rounded-xl border border-black/10 bg-red-50 px-3 py-2 font-semibold text-red-600"
+              >
+                Logout
+              </button>
+            </>
+          ) : (
+            <div className="flex flex-col gap-2">
+              <Link
+                href="/login"
+                className="block rounded-xl border border-black/10 bg-white px-3 py-2 font-semibold"
+                onClick={() => setMobileOpen(false)}
+              >
+                Login
+              </Link>
+              <Link
+                href="/register"
+                className="block rounded-xl border border-brand-yellow bg-brand-yellow px-3 py-2 font-semibold text-black"
+                onClick={() => setMobileOpen(false)}
+              >
+                Sign up
+              </Link>
+            </div>
+          )}
         </div>
       </div>
     </header>

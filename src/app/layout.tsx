@@ -3,6 +3,8 @@ import type { Metadata } from "next";
 import { StoreProvider } from "@/lib/store";
 import Header from "@/components/layouts/Header";
 import Footer from "@/components/layouts/Footer";
+import QueryProvider from "@/providers/QueryProvider";
+import { AuthProvider } from "@/providers/AuthProvider";
 import "leaflet/dist/leaflet.css";
 
 export const metadata: Metadata = {
@@ -19,9 +21,14 @@ export default function RootLayout({
     <html lang="en">
       <body className="min-h-screen bg-white text-black">
         <StoreProvider>
-          <Header />
-          <main className="min-h-[70vh]">{children}</main>
-          <Footer />
+          <QueryProvider>
+            <AuthProvider>
+              {/* ✅ Move Header INSIDE AuthProvider */}
+              <Header />
+              <main className="min-h-[70vh]">{children}</main>
+              <Footer />
+            </AuthProvider>
+          </QueryProvider>
         </StoreProvider>
       </body>
     </html>

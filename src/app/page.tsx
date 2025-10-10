@@ -1,13 +1,28 @@
 "use client";
+
 import Image from "next/image";
-import SearchBar from "@/components/SearchBar";
-import Steps from "@/components/Steps";
+import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
+import api from "@/lib/client";
 import PropertyGrid from "@/components/PropertyGrid";
-import { useStore } from "@/lib/store";
 import FiltersBarWrapper from "@/components/FiltersBarWrapper";
+import Steps from "@/components/Steps";
+
+import type { RoomList } from "@/types/api";
 
 export default function HomePage() {
-  const { properties } = useStore();
+  // Fetch real rooms from backend
+  const {
+    data: rooms,
+    isLoading,
+    error,
+  } = useQuery<RoomList[]>({
+    queryKey: ["rooms"],
+    queryFn: async () => {
+      const res = await api.get("/rooms/");
+      return res.data;
+    },
+  });
 
   return (
     <div>
@@ -60,11 +75,34 @@ export default function HomePage() {
       <section className="mx-auto max-w-6xl p-4">
         <div className="mb-3 flex items-end justify-between">
           <h2 className="text-2xl font-bold">Popular in Calgary</h2>
-          <a className="btn btn-outline" href="/browse">
+          <Link href="/browse" className="btn btn-outline">
             Browse all
-          </a>
+          </Link>
         </div>
-        <PropertyGrid items={properties.slice(0, 6)} />
+
+        {isLoading && (
+          <div className="text-center py-10 text-black/60">
+            Loading rooms...
+          </div>
+        )}
+        {error && (
+          <div className="text-center py-10 text-red-600">
+            Failed to load rooms.
+          </div>
+        )}
+        {rooms && rooms.length > 0 ? (
+          <PropertyGrid
+            items={rooms
+              .filter((r) => r.is_featured) // ✅ only featured rooms
+              .slice(0, 6)}
+          />
+        ) : (
+          !isLoading && (
+            <div className="text-center text-sm text-black/70">
+              No rooms found.
+            </div>
+          )
+        )}
       </section>
 
       <Steps className="mx-auto max-w-6xl p-4" />

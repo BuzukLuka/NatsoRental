@@ -1,16 +1,17 @@
 "use client";
 
+import { useQuery } from "@tanstack/react-query";
 import Image from "next/image";
 import Link from "next/link";
 import {
-  BadgeCheck,
-  CreditCard,
-  Home,
-  Mail,
   User as UserIcon,
+  Mail,
+  CreditCard,
+  BadgeCheck,
+  Home,
 } from "lucide-react";
-import { useStore } from "@/lib/store";
-import type { Property } from "@/types";
+import api from "@/lib/client";
+import { useAuth } from "@/providers/AuthProvider";
 
 function Section({
   title,
@@ -36,70 +37,54 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
-function CurrentRental({
-  property,
-  onPay,
-}: {
-  property: Property;
-  onPay: () => void;
-}) {
-  return (
-    <div className="flex flex-col gap-3 md:flex-row">
-      <div className="relative h-28 w-full overflow-hidden rounded-xl md:h-24 md:w-40">
-        <Image
-          src={property.image}
-          alt={property.title}
-          fill
-          className="object-cover"
-        />
-      </div>
-      <div className="flex-1">
-        <div className="flex items-center justify-between gap-3">
-          <div>
-            <div className="flex items-center gap-2">
-              <h3 className="font-semibold leading-tight">{property.title}</h3>
-              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700 ring-1 ring-emerald-200">
-                <BadgeCheck className="h-3 w-3" /> Active
-              </span>
-            </div>
-            <p className="text-sm text-black/70">
-              {property.neighborhood} · {property.roomType} · {property.tenure}
-            </p>
-          </div>
-          <Link
-            href={`/room/${property.id}`}
-            className="btn btn-outline whitespace-nowrap"
-          >
-            View
-          </Link>
-        </div>
+type Room = {
+  id: number;
+  title: string;
+  price_per_month: string;
+  thumbnail: string | null;
+  address: string;
+  property_type?: { name: string };
+};
 
-        <div className="mt-3 flex items-center justify-between">
-          <div className="text-sm">
-            <span className="text-black/60">$</span>
-            <span className="text-lg font-extrabold">
-              {property.priceMonthly}
-            </span>
-            <span className="text-black/60">/mo</span>
-          </div>
-          <button
-            onClick={onPay}
-            className="inline-flex items-center gap-2 rounded-xl bg-black px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:translate-y-[-1px] hover:shadow-md"
-          >
-            <CreditCard className="h-4 w-4" />
-            Pay this month
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
+type Booking = {
+  id: number;
+  status: string;
+  check_in: string;
+  check_out: string;
+  total_price: string;
+  room: Room;
+};
+
+type Payment = {
+  id: number;
+  amount: string;
+  status: string;
+  created_at: string;
+  payment_type: string;
+};
 
 export default function ProfilePage() {
-  const store = useStore();
+  const { user, isAuthenticated } = useAuth();
 
-  // guard: not logged in
-  if (!store.me) {
+  const {
+    data: bookings,
+    isLoading: loadingBookings,
+  } = useQuery<Booking[]>({
+    queryKey: ["bookings"],
+    queryFn: async () => (await api.get("/bookings/")).data.results || [],
+    enabled: isAuthenticated,
+  });
+
+  const {
+    data: payments,
+    isLoading: loadingPayments,
+  } = useQuery<Payment[]>({
+    queryKey: ["payments"],
+    queryFn: async () => (await api.get("/payments/")).data.results || [],
+    enabled: isAuthenticated,
+  });
+
+  if (!isAuthenticated) {
     return (
       <main className="mx-auto max-w-4xl px-4 pb-16 pt-8">
         <Section title="Profile">
@@ -115,17 +100,8 @@ export default function ProfilePage() {
     );
   }
 
-  const me = store.me;
-  const reservations = store.myReservations();
-  // Одоогийн түрээс: хамгийн сүүлд үүсгэсэн reservation (таны Store reserve нь prepend хийдэг)
-  const current = reservations[0];
-  const currentProperty = current
-    ? store.getPropertyById(current.propertyId)
-    : undefined;
-
   return (
     <main className="mx-auto max-w-6xl px-4 pb-16 pt-8">
-      {/* Header */}
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-extrabold">Profile</h1>
@@ -139,45 +115,102 @@ export default function ProfilePage() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        {/* Left: Profile info */}
+        {/* Left panel */}
         <div className="lg:col-span-1">
           <Section title="Account">
             <div className="mb-3 flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-black/90 text-white">
-                <UserIcon className="h-6 w-6" />
-              </div>
+              {user?.avatar ? (
+                <Image
+                  src={user.avatar}
+                  alt="Avatar"
+                  width={48}
+                  height={48}
+                  className="rounded-full border border-black/10"
+                />
+              ) : (
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-black text-white">
+                  <UserIcon className="h-6 w-6" />
+                </div>
+              )}
               <div>
-                <div className="font-semibold">{me.name}</div>
+                <div className="font-semibold">{user?.name || user?.username}</div>
                 <div className="flex items-center gap-1 text-sm text-black/70">
-                  <Mail className="h-4 w-4" />
-                  {me.email}
+                  <Mail className="h-4 w-4" /> {user?.email}
                 </div>
               </div>
             </div>
-            <Row label="Role" value={me.role} />
+            <Row label="Role" value={user?.role || "—"} />
             <Row
-              label="Wishlist"
-              value={
-                <Link href="/wishlist" className="underline">
-                  {store.wishlist.length} saved
-                </Link>
-              }
-            />
-            <Row
-              label="Reservations"
-              value={<span>{reservations.length}</span>}
+              label="Bookings"
+              value={loadingBookings ? "…" : bookings?.length || 0}
             />
             <Row
               label="Payments"
-              value={<span>{store.payments.length}</span>}
+              value={loadingPayments ? "…" : payments?.length || 0}
             />
           </Section>
         </div>
 
-        {/* Right: Current rental + history + payments */}
+        {/* Right panel */}
         <div className="flex flex-col gap-4 lg:col-span-2">
+          {/* Current Booking */}
           <Section title="Current rental">
-            {!currentProperty ? (
+            {loadingBookings ? (
+              <div className="text-sm text-black/60">Loading...</div>
+            ) : bookings && bookings.length > 0 ? (
+              <div className="flex flex-col gap-3 md:flex-row">
+                <div className="relative h-28 w-full overflow-hidden rounded-xl md:h-24 md:w-40">
+                  <Image
+                    src={bookings[0].room.thumbnail || "/placeholder.png"}
+                    alt={bookings[0].room.title}
+                    fill
+                    className="object-cover"
+                  />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-semibold leading-tight">
+                          {bookings[0].room.title}
+                        </h3>
+                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700 ring-1 ring-emerald-200">
+                          <BadgeCheck className="h-3 w-3" />{" "}
+                          {bookings[0].status}
+                        </span>
+                      </div>
+                      <p className="text-sm text-black/70">
+                        {bookings[0].room.address}
+                      </p>
+                    </div>
+                    <Link
+                      href={`/room/${bookings[0].room.id}`}
+                      className="btn btn-outline whitespace-nowrap"
+                    >
+                      View
+                    </Link>
+                  </div>
+                  <div className="mt-3 flex items-center justify-between">
+                    <div className="text-sm">
+                      <span className="text-black/60">$</span>
+                      <span className="text-lg font-extrabold">
+                        {bookings[0].room.price_per_month}
+                      </span>
+                      <span className="text-black/60">/mo</span>
+                    </div>
+                    <button
+                      onClick={() =>
+                        alert("Integrate Stripe payment here 💳")
+                      }
+                      className="inline-flex items-center gap-2 rounded-xl bg-black px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:translate-y-[-1px] hover:shadow-md"
+                    >
+                      <CreditCard className="h-4 w-4" />
+                      Pay this month
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ) : (
               <div className="flex flex-col items-center justify-center gap-2 py-6 text-center">
                 <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-50 text-amber-700">
                   <Home className="h-6 w-6" />
@@ -185,94 +218,79 @@ export default function ProfilePage() {
                 <div className="font-semibold">No active rental</div>
                 <p className="max-w-md text-sm text-black/70">
                   Reserve a room to see it here. You can browse available homes
-                  and add to wishlist.
+                  and add to your wishlist.
                 </p>
                 <div className="mt-2 flex gap-2">
                   <Link href="/browse" className="btn btn-outline">
                     Browse homes
                   </Link>
-                  <Link href="/wishlist" className="btn btn-outline">
-                    Wishlist
-                  </Link>
                 </div>
               </div>
-            ) : (
-              <CurrentRental
-                property={currentProperty}
-                onPay={() => store.payRent(currentProperty.priceMonthly)}
-              />
             )}
           </Section>
 
+          {/* Booking history */}
           <Section title="Rental history">
-            {reservations.length === 0 ? (
-              <div className="text-sm text-black/70">No reservations yet.</div>
-            ) : (
+            {loadingBookings ? (
+              <div className="text-sm text-black/60">Loading...</div>
+            ) : bookings && bookings.length > 0 ? (
               <div className="flex flex-col gap-3">
-                {reservations.map((r) => {
-                  const prop = store.getPropertyById(r.propertyId);
-                  if (!prop) return null;
-                  return (
-                    <div
-                      key={r.id}
-                      className="flex items-center justify-between gap-3 rounded-xl border border-black/10 p-3"
-                    >
-                      <div className="min-w-0">
-                        <div className="font-medium leading-tight line-clamp-1">
-                          {r.propertyTitle}
-                        </div>
-                        <div className="text-xs text-black/60">
-                          {prop.neighborhood} · deposit ${r.deposit}
-                        </div>
+                {bookings.map((b) => (
+                  <div
+                    key={b.id}
+                    className="flex items-center justify-between gap-3 rounded-xl border border-black/10 p-3"
+                  >
+                    <div className="min-w-0">
+                      <div className="font-medium leading-tight line-clamp-1">
+                        {b.room.title}
                       </div>
-                      <div className="flex shrink-0 items-center gap-2">
-                        <div className="text-sm">
-                          <span className="text-black/60">$</span>
-                          <span className="font-semibold">
-                            {prop.priceMonthly}
-                          </span>
-                          <span className="text-black/60">/mo</span>
-                        </div>
-                        <Link
-                          href={`/room/${prop.id}`}
-                          className="btn btn-outline"
-                        >
-                          View
-                        </Link>
+                      <div className="text-xs text-black/60">
+                        {b.room.address} · ${b.total_price}
                       </div>
                     </div>
-                  );
-                })}
+                    <Link
+                      href={`/room/${b.room.id}`}
+                      className="btn btn-outline"
+                    >
+                      View
+                    </Link>
+                  </div>
+                ))}
               </div>
+            ) : (
+              <div className="text-sm text-black/70">No bookings yet.</div>
             )}
           </Section>
 
+          {/* Payment history */}
           <Section title="Payment history">
-            {store.payments.length === 0 ? (
-              <div className="text-sm text-black/70">No payments yet.</div>
-            ) : (
+            {loadingPayments ? (
+              <div className="text-sm text-black/60">Loading...</div>
+            ) : payments && payments.length > 0 ? (
               <div className="overflow-hidden rounded-xl border border-black/10">
                 <table className="w-full text-sm">
                   <thead className="bg-black/5 text-left">
                     <tr>
                       <th className="px-3 py-2">Date</th>
                       <th className="px-3 py-2">Amount</th>
-                      <th className="px-3 py-2">Note</th>
+                      <th className="px-3 py-2">Status</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {store.payments.map((p) => (
+                    {payments.map((p) => (
                       <tr key={p.id} className="border-t border-black/5">
-                        <td className="px-3 py-2">{p.date}</td>
-                        <td className="px-3 py-2">${p.amount}</td>
-                        <td className="px-3 py-2 text-black/60">
-                          Rent payment
+                        <td className="px-3 py-2">
+                          {new Date(p.created_at).toLocaleDateString()}
                         </td>
+                        <td className="px-3 py-2">${p.amount}</td>
+                        <td className="px-3 py-2 text-black/60">{p.status}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
+            ) : (
+              <div className="text-sm text-black/70">No payments yet.</div>
             )}
           </Section>
         </div>

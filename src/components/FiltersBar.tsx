@@ -1,43 +1,56 @@
 "use client";
-import React from "react";
+import React, { useState } from "react";
 import { useStore } from "@/lib/store";
 import type { Filters } from "@/types";
 import { Range } from "react-range";
+import { Search } from "lucide-react";
 
 export default function FiltersBar() {
   const { filters, setFilters } = useStore();
+  const [pendingFilters, setPendingFilters] = useState(filters);
 
-  const updateFilters = (patch: Partial<Filters>) => {
-    setFilters({ ...filters, ...patch });
+  const updatePending = (patch: Partial<Filters>) => {
+    setPendingFilters({ ...pendingFilters, ...patch });
   };
 
   const handlePetsAllowedChange = (checked: boolean) => {
-    updateFilters({
+    updatePending({
       petsAllowed: checked ? true : undefined,
       noPets: checked ? undefined : filters.noPets,
     });
   };
 
+  const handleSearch = () => {
+    setFilters(pendingFilters);
+  };
+
   return (
-    <div className="w-full bg-white shadow-lg rounded-xl border border-gray-200 p-4 flex flex-col md:flex-row md:flex-wrap gap-3 items-center justify-between">
-      {/* Search */}
-      <div className="flex-1 min-w-[120px]">
+    <div className="w-full bg-white shadow-xl rounded-2xl border border-gray-200 p-6 flex flex-col md:flex-row md:flex-wrap gap-4 items-center justify-between">
+      {/* Search Field */}
+      <div className="flex-1 min-w-[200px] relative">
         <input
           type="text"
-          placeholder="Search..."
-          className="w-full px-3 py-2 rounded-lg border border-gray-400 bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          value={filters.q ?? ""}
-          onChange={(e) => updateFilters({ q: e.target.value || undefined })}
+          placeholder="Search by keyword..."
+          className="w-full px-4 py-2.5 rounded-lg border border-gray-300 bg-gray-50 text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+          value={pendingFilters.q ?? ""}
+          onChange={(e) => updatePending({ q: e.target.value || undefined })}
         />
+        <button
+          onClick={handleSearch}
+          className="absolute right-2 top-1/2 -translate-y-1/2 bg-blue-600 text-white p-2 rounded-md hover:bg-blue-700 transition-all"
+          title="Search"
+        >
+          <Search className="h-4 w-4" />
+        </button>
       </div>
 
       {/* City / Area */}
-      <div className="flex-1 min-w-[140px]">
+      <div className="flex-1 min-w-[160px]">
         <select
-          className="w-full px-3 py-2 rounded-lg border border-gray-400 bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          value={filters.cityArea ?? ""}
+          className="w-full px-3 py-2 rounded-lg border border-gray-300 bg-gray-50 text-gray-800 focus:ring-2 focus:ring-blue-500"
+          value={pendingFilters.cityArea ?? ""}
           onChange={(e) =>
-            updateFilters({ cityArea: e.target.value || undefined })
+            updatePending({ cityArea: e.target.value || undefined })
           }
         >
           <option value="">City / Area</option>
@@ -50,12 +63,12 @@ export default function FiltersBar() {
       </div>
 
       {/* Type */}
-      <div className="flex-1 min-w-[140px]">
+      <div className="flex-1 min-w-[160px]">
         <select
-          className="w-full px-3 py-2 rounded-lg border border-gray-400 bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          value={filters.type ?? ""}
+          className="w-full px-3 py-2 rounded-lg border border-gray-300 bg-gray-50 text-gray-800 focus:ring-2 focus:ring-blue-500"
+          value={pendingFilters.type ?? ""}
           onChange={(e) =>
-            updateFilters({
+            updatePending({
               type: (e.target.value || undefined) as Filters["type"],
             })
           }
@@ -71,12 +84,12 @@ export default function FiltersBar() {
       </div>
 
       {/* Tenure */}
-      <div className="flex-1 min-w-[120px]">
+      <div className="flex-1 min-w-[140px]">
         <select
-          className="w-full px-3 py-2 rounded-lg border border-gray-400 bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          value={filters.tenure ?? ""}
+          className="w-full px-3 py-2 rounded-lg border border-gray-300 bg-gray-50 text-gray-800 focus:ring-2 focus:ring-blue-500"
+          value={pendingFilters.tenure ?? ""}
           onChange={(e) =>
-            updateFilters({
+            updatePending({
               tenure: (e.target.value || undefined) as Filters["tenure"],
             })
           }
@@ -89,12 +102,12 @@ export default function FiltersBar() {
       </div>
 
       {/* Monthly */}
-      <div className="flex-1 min-w-[120px]">
+      <div className="flex-1 min-w-[140px]">
         <select
-          className="w-full px-3 py-2 rounded-lg border border-gray-400 bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          value={filters.monthlyRange ?? ""}
+          className="w-full px-3 py-2 rounded-lg border border-gray-300 bg-gray-50 text-gray-800 focus:ring-2 focus:ring-blue-500"
+          value={pendingFilters.monthlyRange ?? ""}
           onChange={(e) =>
-            updateFilters({ monthlyRange: e.target.value || undefined })
+            updatePending({ monthlyRange: e.target.value || undefined })
           }
         >
           <option value="">Monthly</option>
@@ -105,57 +118,76 @@ export default function FiltersBar() {
         </select>
       </div>
 
-      {/* Price Slider */}
-      <div className="flex-1 min-w-[200px] mt-2 md:mt-0">
+      {/* Price Range */}
+      <div className="flex-1 min-w-[220px]">
         <Range
           step={50}
           min={0}
           max={2000}
-          values={[filters.priceMin ?? 0, filters.priceMax ?? 2000]}
+          values={[
+            pendingFilters.priceMin ?? 0,
+            pendingFilters.priceMax ?? 2000,
+          ]}
           onChange={(values: number[]) =>
-            updateFilters({ priceMin: values[0], priceMax: values[1] })
+            updatePending({ priceMin: values[0], priceMax: values[1] })
           }
-          renderTrack={({ props, children }) => (
-            <div
-              {...props}
-              className="h-2 bg-gray-200 rounded-full w-full relative"
-              style={props.style}
-            >
+          renderTrack={({ props, children }) => {
+            return (
               <div
-                className="absolute h-2 bg-blue-500 rounded-full"
-                style={{
-                  left: `${((filters.priceMin ?? 0) / 2000) * 100}%`,
-                  right: `${100 - ((filters.priceMax ?? 2000) / 2000) * 100}%`,
-                }}
+                {...props}
+                className="h-2 bg-gray-200 rounded-full w-full relative"
+                style={props.style}
+              >
+                <div
+                  className="absolute h-2 bg-blue-500 rounded-full"
+                  style={{
+                    left: `${((pendingFilters.priceMin ?? 0) / 2000) * 100}%`,
+                    right: `${
+                      100 - ((pendingFilters.priceMax ?? 2000) / 2000) * 100
+                    }%`,
+                  }}
+                />
+                {children}
+              </div>
+            );
+          }}
+          renderThumb={({ props }) => {
+            return (
+              <div
+                {...props}
+                className="h-5 w-5 rounded-full bg-white border-2 border-blue-600 shadow cursor-pointer"
               />
-              {children}
-            </div>
-          )}
-          renderThumb={({ props }) => (
-            <div
-              {...props}
-              className="h-5 w-5 rounded-full bg-white border-2 border-blue-600 shadow-md cursor-pointer focus:outline-none"
-            />
-          )}
+            );
+          }}
         />
         <div className="flex justify-between text-sm text-gray-700 font-medium mt-1">
-          <span>Min: {filters.priceMin ?? 0}</span>
-          <span>Max: {filters.priceMax ?? 2000}</span>
+          <span>Min: {pendingFilters.priceMin ?? 0}</span>
+          <span>Max: {pendingFilters.priceMax ?? 2000}</span>
         </div>
       </div>
 
       {/* Pets */}
-      <div className="flex items-center gap-2 mt-2 md:mt-0">
+      <div className="flex items-center gap-2">
         <input
           type="checkbox"
           id="pets-allowed"
-          className="h-4 w-4 text-blue-600 border-gray-400 rounded focus:ring-blue-500"
-          checked={filters.petsAllowed === true}
+          className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+          checked={pendingFilters.petsAllowed === true}
           onChange={(e) => handlePetsAllowedChange(e.target.checked)}
         />
         <label htmlFor="pets-allowed" className="text-sm text-gray-800">
           Pets allowed
         </label>
+      </div>
+
+      {/* Search Button (mobile view visible too) */}
+      <div className="w-full md:w-auto flex justify-end mt-2 md:mt-0">
+        <button
+          onClick={handleSearch}
+          className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow transition-all w-full md:w-auto"
+        >
+          Search
+        </button>
       </div>
     </div>
   );

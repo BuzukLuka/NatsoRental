@@ -2,11 +2,11 @@
 
 import { Heart } from "lucide-react";
 import { useStore } from "@/lib/store";
-import type { Property } from "@/types";
+import { RoomList } from "@/types/api";
 
-export default function WishlistButton({ p }: { p: Property }) {
+export default function WishlistButton({ p }: { p: RoomList }) {
   const store = useStore();
-  const isOn = store.isWishlisted(p.id);
+  const isOn = store.isWishlisted(String(p.id));
 
   return (
     <button
@@ -14,7 +14,7 @@ export default function WishlistButton({ p }: { p: Property }) {
       onClick={(e) => {
         e.preventDefault();
         e.stopPropagation(); // картын нэвтрэлтээс сэргийлнэ
-        store.toggleWishlist(p);
+        // store.toggleWishlist(p);
       }}
       className="inline-flex items-center rounded-full bg-white/90 p-2 shadow backdrop-blur transition hover:bg-white"
     >
