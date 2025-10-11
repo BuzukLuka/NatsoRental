@@ -1,14 +1,15 @@
+// src/providers/AuthProvider.tsx
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
 import api from "@/lib/client";
-import type { Register } from "@/types/api";
+import type { Register, User } from "@/types/api";
 import { useQueryClient } from "@tanstack/react-query";
 
 interface AuthContextType {
-  user: any | null;
+  user: User | null;
   isAuthenticated: boolean;
-  loading: boolean;
+  loading: boolean; // UI-г блоклохгүй; зөвхөн “auth refresh явж байна” гэдгийг хэлнэ
   login: (username: string, password: string) => Promise<void>;
   register: (data: Register) => Promise<void>;
   logout: () => Promise<void>;
@@ -18,36 +19,44 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
-  const [user, setUser] = useState<any | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(false); // ⛑️ өмнө нь true байснаас UI блоколж байсан
   const queryClient = useQueryClient();
 
-  // Fetch user from backend if token exists
+  // URIDCHILSAN: access token байгаа эсэх
+  const hasToken =
+    typeof window !== "undefined" &&
+    (!!localStorage.getItem("access") || !!localStorage.getItem("refresh"));
+
   const refreshUser = async () => {
+    setLoading(true);
     try {
       const res = await api.get("/users/me/");
-      // res.data is the dashboard; keep just the user part in auth context
-      setUser(res.data?.user ?? null);
+      setUser((res.data?.user as User) ?? null);
     } catch {
       setUser(null);
     } finally {
       setLoading(false);
     }
   };
+
   useEffect(() => {
-    refreshUser();
-  }, []);
+    // token байвал background-д шинэчил; UI-г нуухгүй
+    if (hasToken) {
+      void refreshUser();
+    }
+    // token байхгүй бол шууд “зочин” төлөвөөр рэндэрлэ
+  }, [hasToken]);
 
   const login = async (username: string, password: string) => {
     const res = await api.post("/users/login/", { username, password });
-    localStorage.setItem("access", res.data.access);
-    localStorage.setItem("refresh", res.data.refresh);
+    localStorage.setItem("access", res.data.access as string);
+    localStorage.setItem("refresh", res.data.refresh as string);
     await refreshUser();
   };
 
   const register = async (data: Register) => {
     await api.post("/users/register/", data);
-    // Optionally auto-login after register
   };
 
   const logout = async () => {

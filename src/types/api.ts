@@ -1,3 +1,4 @@
+// src/types/api.ts
 export interface PropertyType {
   id: number;
   name: string;
@@ -14,7 +15,7 @@ export interface RoomList {
   average_rating: number;
   is_featured: boolean;
   property_type: PropertyType;
-  coordinates: string;
+  coordinates: string; // эсвэл {lat:number; lng:number} | string — backend-тэйгээ тааруул
   address?: string;
   tenure?: string;
   pets_allowed: boolean;
@@ -25,6 +26,15 @@ export interface RoomImage {
   image: string;
   alt_text?: string;
   is_featured: boolean;
+}
+
+export interface RoomReview {
+  id: number;
+  user: string;
+  rating: number;
+  text?: string;
+  booking: number;
+  created_at: string;
 }
 
 export interface RoomDetail {
@@ -41,7 +51,7 @@ export interface RoomDetail {
   property_type: PropertyType;
   images: RoomImage[];
   average_rating: number;
-  reviews?: any[]; // or use a dedicated Review type if you have one
+  reviews?: RoomReview[]; // ✅ any[] -> RoomReview[]
   bathrooms: number;
   bedrooms: number;
   furnished: boolean;
@@ -75,12 +85,12 @@ export interface Booking {
   created_at: string;
 }
 
-// types/api.ts (example)
+// Summary
 export interface BookingSummary {
   id: number;
-  status: "pending" | "confirmed" | "checked_in" | "completed" | "canceled";
+  status: BookingStatus;
   total_price: string;
-  check_in: string; // ISO: "YYYY-MM-DD"
+  check_in: string; // ISO
   check_out: string; // ISO
   nights: number;
   created_at: string;
@@ -141,16 +151,6 @@ export interface RoomAvailability {
   is_available: boolean;
 }
 
-/* ---------- REVIEWS ---------- */
-export interface RoomReview {
-  id: number;
-  user: string;
-  rating: number;
-  text?: string;
-  booking: number;
-  created_at: string;
-}
-
 /* ---------- SERVICE REQUESTS ---------- */
 export type ServiceRequestType =
   | "cleaning"
@@ -202,7 +202,6 @@ export interface TokenPair {
   refresh: string;
 }
 
-/* ---------- SERVICE WORKERS ---------- */
 export type WorkerType =
   | "cleaner"
   | "handyman"
@@ -222,38 +221,33 @@ export interface ServiceWorker {
   available: boolean;
 }
 
-/* -------------------------------------------------
-   Utility types
--------------------------------------------------- */
-export type ID = number | string;
-export type DateTime = string; // ISO 8601
-export type Decimal = string;
-
+/* ---------- Core User ---------- */
 export interface User {
-  // core
   id: number;
   username: string;
   email: string;
 
-  // profile
   name: string | null;
   first_name: string | null;
   last_name: string | null;
   phone: string | null;
-  avatar: string | null; // absolute URL or null
+  avatar: string | null;
   bio: string | null;
 
-  // role
   role: UserRole;
-  role_label: string; // e.g. "Renter" (read-only)
-  is_worker: boolean; // read-only
-  is_owner: boolean; // read-only
-  is_renter: boolean; // read-only
-  is_platform_staff: boolean; // read-only
+  role_label: string;
+  is_worker: boolean;
+  is_owner: boolean;
+  is_renter: boolean;
+  is_platform_staff: boolean;
 
-  // org / address / verification
   company_name: string | null;
   address: string | null;
   verified: boolean;
   joined_via_invite: boolean;
 }
+
+/* ---------- Utility ---------- */
+export type ID = number | string;
+export type DateTime = string; // ISO 8601
+export type Decimal = string;
