@@ -1,9 +1,9 @@
+// src/app/profile/page.tsx
 "use client";
 
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import {
   CreditCard,
   BadgeCheck,
@@ -18,7 +18,6 @@ import {
   LayoutList,
   Wrench,
   ReceiptText,
-  Sparkles,
 } from "lucide-react";
 import api from "@/lib/client";
 import { useAuth } from "@/providers/AuthProvider";
@@ -31,6 +30,14 @@ import {
 import type { ServiceRequest } from "@/types/serviceRequests";
 import { Tabs, TabPanel } from "@/components/ui/Tabs";
 import ServicesContent from "@/components/ServicesComponent";
+import type { User } from "@/types/api";
+
+/** -------- Local type to normalize dash.user + auth.user -------- */
+type ProfileUser = User & {
+  // allow them to be optional if dash.user is slimmer
+  company_name?: string | null;
+  address?: string | null;
+};
 
 /* ---------- tiny helpers ---------- */
 function Section({
@@ -90,7 +97,6 @@ const StatusPill = ({ s }: { s: ServiceRequest["status"] }) => {
 /* ---------------------------------- */
 
 export default function ProfilePage() {
-  const router = useRouter();
   const { user, isAuthenticated } = useAuth();
   const { data: dash, isLoading } = useDashboard(isAuthenticated);
 
@@ -108,12 +114,6 @@ export default function ProfilePage() {
     useServiceRequests(isAuthenticated);
   const createReq = useCreateServiceRequest();
   const completeReq = useMarkServiceRequestCompleted();
-  const [reqType, setReqType] = useState<
-    "cleaning" | "repair" | "maintenance" | "other"
-  >("cleaning");
-  const [reqDesc, setReqDesc] = useState("");
-  const [successMsg, setSuccessMsg] = useState<string | null>(null);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   if (!isAuthenticated) {
     return (
@@ -131,7 +131,8 @@ export default function ProfilePage() {
     );
   }
 
-  const profile = dash?.user ?? user;
+  // ✅ Normalize the profile object to a single friendly type for this page
+  const profile = (dash?.user ?? user) as ProfileUser | null;
   const current = dash?.current_rental ?? null;
 
   const handlePay = async () => {
@@ -142,14 +143,21 @@ export default function ProfilePage() {
       const res = await api.post("/payments/create-session/", {
         booking_id: current.id,
       });
-      const url = res.data?.checkout_url;
+      const url = (res.data as { checkout_url?: string })?.checkout_url;
       if (url) window.location.href = url;
       else throw new Error("No checkout_url returned");
-    } catch (e: any) {
-      setPayError(
-        e?.response?.data?.detail ||
-          "Could not start checkout. Please try again."
-      );
+    } catch (e: unknown) {
+      // narrow unknown safely
+      let message = "Could not start checkout. Please try again.";
+      if (
+        e &&
+        typeof e === "object" &&
+        "response" in e &&
+        (e as any).response?.data?.detail
+      ) {
+        message = (e as any).response.data.detail as string;
+      }
+      setPayError(message);
       setPaying(false);
     }
   };
@@ -221,10 +229,10 @@ export default function ProfilePage() {
               label="Payments"
               value={isLoading ? "…" : dash?.stats.payments_count ?? 0}
             />
-            {profile?.company_name && (
+            {profile?.company_name ? (
               <Row label="Company" value={profile.company_name} />
-            )}
-            {profile?.address && (
+            ) : null}
+            {profile?.address ? (
               <Row
                 label="Address"
                 value={
@@ -234,7 +242,7 @@ export default function ProfilePage() {
                   </span>
                 }
               />
-            )}
+            ) : null}
           </Section>
 
           {profile?.bio ? (
@@ -267,7 +275,7 @@ export default function ProfilePage() {
               },
             ]}
             value={tab}
-            onChange={(v) => setTab(v as any)}
+            onChange={(v) => setTab(v as "overview" | "services" | "payments")}
             className="sticky top-[64px] z-[5] bg-transparent"
           />
 

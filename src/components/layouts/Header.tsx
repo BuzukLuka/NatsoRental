@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
-import { Menu, Heart, Bell } from "lucide-react";
+import { Menu, Heart } from "lucide-react";
 import ProfileMenu from "../ProfileMenu";
 import { useAuth } from "@/providers/AuthProvider";
 import { motion, AnimatePresence } from "framer-motion";
@@ -44,17 +44,15 @@ export default function Header() {
 
   const base =
     "sticky top-0 z-[1000] border-b border-black/10 bg-white/75 backdrop-blur supports-[backdrop-filter]:bg-white/65";
-  const elevated = "shadow-[0_6px_0_#00000010]";
-
-  if (loading) return null;
 
   return (
     <motion.header
       aria-label="Main header"
       className={cx(base)}
-      initial={{ y: -12, opacity: 0 }}
+      // ⛑️ Энд анхны animation-ыг унтрааж, шууд зурна
+      initial={false}
       animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.24, ease: "easeOut" }}
+      transition={{ duration: 0.2, ease: "easeOut" }}
     >
       {/* top bar */}
       <motion.div
@@ -64,7 +62,7 @@ export default function Header() {
             ? "0px 6px 0px rgba(0,0,0,0.06)"
             : "0px 0px 0px rgba(0,0,0,0)",
         }}
-        transition={{ duration: 0.25 }}
+        transition={{ duration: 0.2 }}
       >
         {/* Left: Brand */}
         <div className="flex min-w-0 items-center gap-2">
@@ -95,11 +93,19 @@ export default function Header() {
           <MotionLink href="/investors" label="Investors" />
           <MotionLink href="/landlord" label="Landlord" />
 
-          {isAuthenticated ? (
+          {/* ⛑️ Бүрэн нуухын оронд skeleton/placeholder харуулна */}
+          {loading ? (
+            <div className="hidden md:flex items-center gap-2">
+              <div className="h-9 w-9 animate-pulse rounded-xl bg-black/10" />
+              <div className="h-9 w-24 animate-pulse rounded-xl bg-black/10" />
+              <div className="h-9 w-20 animate-pulse rounded-xl bg-black/10" />
+            </div>
+          ) : isAuthenticated ? (
             <>
               <IconButton href="/wishlists" aria="Wishlists">
                 <Heart size={17} />
               </IconButton>
+              {/* NotificationsBell өөрөө fetch хийдэг бол дотроо skeleton-тай байхад OK */}
               <NotificationsBell />
               <div className="hidden md:block">
                 <ProfileMenu placement="popover" />
@@ -158,7 +164,12 @@ export default function Header() {
                 </MobileLink>
               </StaggerItem>
 
-              {isAuthenticated ? (
+              {loading ? (
+                <div className="grid gap-2">
+                  <div className="h-10 animate-pulse rounded-xl bg-black/10" />
+                  <div className="h-10 animate-pulse rounded-xl bg-black/10" />
+                </div>
+              ) : isAuthenticated ? (
                 <>
                   <StaggerItem>
                     <ProfileMenu placement="inline" />

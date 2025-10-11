@@ -16,8 +16,13 @@ export default function FiltersBar() {
 
   const applyFilters = () => {
     setFilters(pending);
-    refreshRooms(); // ✅ trigger room refetch in React Query
+    refreshRooms();
   };
+
+  const values: [number, number] = [
+    pending.priceMin ?? 0,
+    pending.priceMax ?? 2000,
+  ];
 
   return (
     <div className="w-full bg-white shadow-xl rounded-2xl border border-gray-200 p-6 flex flex-col md:flex-row md:flex-wrap gap-4 items-center justify-between">
@@ -98,36 +103,44 @@ export default function FiltersBar() {
           step={50}
           min={0}
           max={2000}
-          values={[pending.priceMin ?? 0, pending.priceMax ?? 2000]}
-          onChange={(values) =>
-            update({ priceMin: values[0], priceMax: values[1] })
-          }
-          renderTrack={({ props, children }) => (
-            <div
-              {...props}
-              className="h-2 bg-gray-200 rounded-full w-full relative"
-              style={props.style}
-            >
+          values={values}
+          onChange={(vals) => update({ priceMin: vals[0], priceMax: vals[1] })}
+          renderTrack={({ props: trackProps, children }) => {
+            // ⛑️ Pull out `key` if present before spreading
+            const { key: trackKey, ...restTrack } = trackProps as any;
+            return (
               <div
-                className="absolute h-2 bg-blue-500 rounded-full"
-                style={{
-                  left: `${((pending.priceMin ?? 0) / 2000) * 100}%`,
-                  right: `${100 - ((pending.priceMax ?? 2000) / 2000) * 100}%`,
-                }}
+                key={trackKey}
+                {...restTrack}
+                className="h-2 bg-gray-200 rounded-full w-full relative"
+                style={restTrack.style}
+              >
+                <div
+                  className="absolute h-2 bg-blue-500 rounded-full"
+                  style={{
+                    left: `${((values[0] ?? 0) / 2000) * 100}%`,
+                    right: `${100 - ((values[1] ?? 2000) / 2000) * 100}%`,
+                  }}
+                />
+                {children}
+              </div>
+            );
+          }}
+          renderThumb={({ props: thumbProps }) => {
+            // ⛑️ Fix: pass `key` explicitly, spread the rest
+            const { key: thumbKey, ...restThumb } = thumbProps as any;
+            return (
+              <div
+                key={thumbKey}
+                {...restThumb}
+                className="h-5 w-5 rounded-full bg-white border-2 border-blue-600 shadow cursor-pointer"
               />
-              {children}
-            </div>
-          )}
-          renderThumb={({ props }) => (
-            <div
-              {...props}
-              className="h-5 w-5 rounded-full bg-white border-2 border-blue-600 shadow cursor-pointer"
-            />
-          )}
+            );
+          }}
         />
         <div className="flex justify-between text-sm text-gray-700 font-medium mt-1">
-          <span>Min: {pending.priceMin ?? 0}</span>
-          <span>Max: {pending.priceMax ?? 2000}</span>
+          <span>Min: {values[0]}</span>
+          <span>Max: {values[1]}</span>
         </div>
       </div>
 
@@ -138,7 +151,10 @@ export default function FiltersBar() {
           id="pets-allowed"
           className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
           checked={pending.petsAllowed === true}
-          onChange={(e) => update({ petsAllowed: e.target.checked })}
+          onChange={(e) => {
+            // If unchecked, clear the filter (undefined) so it means “any”
+            update({ petsAllowed: e.target.checked ? true : undefined });
+          }}
         />
         <label htmlFor="pets-allowed" className="text-sm text-gray-800">
           Pets allowed

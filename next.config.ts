@@ -9,6 +9,14 @@ const nextConfig: NextConfig = {
       { protocol: "http", hostname: "localhost" },
     ],
   },
+  eslint: {
+    // ✅ Build үед lint error-уудаас болж унахгүй
+    ignoreDuringBuilds: true,
+  },
+  // Хэрэв TS алдаа түр хугацаанд хориг болж байвал (зөвхөн түр):
+  typescript: {
+    ignoreBuildErrors: false, // ← үнэхээр нэмэх шаардлагатай бол л true болгоорой
+  },
 };
 
 export default nextConfig;

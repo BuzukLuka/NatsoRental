@@ -1,16 +1,15 @@
+// src/app/page.tsx
 "use client";
 
 import Image from "next/image";
 import Link from "next/link";
 import PropertyGrid from "@/components/PropertyGrid";
 import Steps from "@/components/Steps";
-
 import { useApp } from "@/providers/AppProvider";
 import FiltersBar from "@/components/FiltersBar";
 
 export default function HomePage() {
-  // Fetch real rooms from backend
-  const { rooms, filters, setFilters, isLoading } = useApp();
+  const { rooms, isLoading } = useApp();
 
   return (
     <div>
@@ -27,7 +26,7 @@ export default function HomePage() {
         <div className="absolute inset-0 flex items-center justify-center px-4">
           <div className="max-w-3xl text-center text-white reveal">
             <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs backdrop-blur">
-              🇨🇦 Calgary · Mid & Long term
+              🇨🇦 Calgary · Mid &amp; Long term
             </div>
             <h1 className="mt-4 text-4xl font-extrabold md:text-5xl">
               Find your <span className="text-brand-yellow">next room</span> in
@@ -38,7 +37,7 @@ export default function HomePage() {
               portal.
             </p>
 
-            {/* FiltersBar (hero хувилбар) */}
+            {/* FiltersBar (hero version) */}
             <FiltersBar />
           </div>
         </div>
@@ -73,12 +72,10 @@ export default function HomePage() {
             Loading rooms...
           </div>
         )}
-        {/* If you have error handling, add error state to useApp and use it here. Otherwise, remove this block. */}
+
         {rooms && rooms.length > 0 ? (
           <PropertyGrid
-            items={rooms
-              .filter((r) => r.is_featured) // ✅ only featured rooms
-              .slice(0, 6)}
+            items={rooms.filter((r) => r.is_featured).slice(0, 6)}
           />
         ) : (
           !isLoading && (
