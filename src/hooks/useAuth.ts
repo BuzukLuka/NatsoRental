@@ -1,55 +1,47 @@
+"use client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/client";
-import type { Register, TokenPair } from "@/types/api";
+import type { User } from "@/types/api";
 
-interface LoginPayload {
-  username: string;
-  password: string;
-}
+export function useAuth() {
+  const queryClient = useQueryClient();
 
-export function useRegister() {
-  return useMutation({
-    mutationFn: async (payload: Register) => {
-      const res = await api.post("/users/register/", payload);
+  const { data: user } = useQuery<User | null>({
+    queryKey: ["me"],
+    queryFn: async () => {
+      const res = await api.get("/users/me/");
       return res.data;
     },
+    retry: false,
   });
-}
 
-export function useLogin() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (payload: LoginPayload) => {
-      const res = await api.post<TokenPair>("/users/login/", payload);
-      if (typeof window !== "undefined") {
-        localStorage.setItem("access", res.data.access);
-        localStorage.setItem("refresh", res.data.refresh);
-      }
+  const login = useMutation({
+    mutationFn: async (body: { email: string; password: string }) => {
+      const res = await api.post("/users/login/", body);
       return res.data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["current-user"] });
+      queryClient.invalidateQueries({ queryKey: ["me"] });
     },
   });
-}
 
-export function useLogout() {
-  const queryClient = useQueryClient();
-  return useMutation({
+  const logout = useMutation({
     mutationFn: async () => {
-      await api.post("/users/logout/");
-      localStorage.removeItem("access");
-      localStorage.removeItem("refresh");
+      await api.post("/accounts/logout/");
     },
-    onSuccess: () => queryClient.removeQueries(),
+    onSuccess: () => {
+      queryClient.setQueryData(["me"], null);
+    },
   });
+
+  return { user, login, logout };
 }
 
 export function useCurrentUser() {
-  return useQuery({
-    queryKey: ["current-user"],
+  return useQuery<User | null>({
+    queryKey: ["me"],
     queryFn: async () => {
-      const res = await api.get("/users/me/");
+      const res = await api.get("/accounts/me/");
       return res.data;
     },
   });

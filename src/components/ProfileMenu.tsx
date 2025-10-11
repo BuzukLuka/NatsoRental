@@ -77,12 +77,12 @@ export default function ProfileMenu({
       label: "Your profile",
       icon: <User size={16} />,
     },
-    {
-      type: "link",
-      href: "/trips",
-      label: "Trips & bookings",
-      icon: <CalendarDays size={16} />,
-    },
+    // {
+    //   type: "link",
+    //   href: "/trips",
+    //   label: "Trips & bookings",
+    //   icon: <CalendarDays size={16} />,
+    // },
     {
       type: "link",
       href: "/wishlists",
@@ -99,20 +99,14 @@ export default function ProfileMenu({
   ];
 
   const secondaryItems: MenuItem[] = [
-    {
-      type: "link",
-      href: "/host",
-      label: "Become a Host",
-      icon: <Briefcase size={16} />,
-      accent: true,
-    },
-    { type: "separator" },
-    {
-      type: "link",
-      href: "/account",
-      label: "Account settings",
-      icon: <Settings size={16} />,
-    },
+    // {
+    //   type: "link",
+    //   href: "/host",
+    //   label: "Become a Host",
+    //   icon: <Briefcase size={16} />,
+    //   accent: true,
+    // },
+    // { type: "separator" },
     {
       type: "link",
       href: "/verify",
@@ -177,9 +171,7 @@ export default function ProfileMenu({
               <p className="truncate text-sm font-extrabold">
                 {user?.name || user?.username}
               </p>
-              <p className="truncate text-xs text-neutral-500">
-                {user?.email}
-              </p>
+              <p className="truncate text-xs text-neutral-500">{user?.email}</p>
             </>
           ) : (
             <>

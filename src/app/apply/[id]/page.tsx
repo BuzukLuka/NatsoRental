@@ -1,49 +1,16 @@
 "use client";
-import { useParams, useRouter } from "next/navigation";
-import { useStore } from "@/lib/store";
 import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
 
 export default function ApplyPage() {
-  const { id } = useParams<{ id: string }>();
-  const router = useRouter();
-  const { getPropertyById, submitApplication, me } = useStore();
-  const p = getPropertyById(id);
-  if (!p) return <div className="p-6">Not found.</div>;
-
-  async function onSubmit(formData: FormData) {
-    if (!p) return;
-    const payload = {
-      propertyId: p.id,
-      fullName: String(formData.get("fullName") || ""),
-      email: String(formData.get("email") || ""),
-      idNumber: String(formData.get("idNumber") || ""),
-      references: String(formData.get("references") || ""),
-      moveIn: String(formData.get("moveIn") || ""),
-    };
-    submitApplication(payload);
-    router.push(`/reservation/${p.id}`);
-  }
-
   return (
     <div className="mx-auto max-w-2xl p-4">
       <h1 className="text-2xl font-extrabold">Application & Screening</h1>
-      <p className="text-sm text-black/70">For: {p.title}</p>
+      <p className="text-sm text-black/70">For: [Property Title]</p>
 
-      <form action={onSubmit} className="mt-6 grid gap-4">
-        <Input
-          name="fullName"
-          label="Full name"
-          defaultValue={me?.name || ""}
-          required
-        />
-        <Input
-          name="email"
-          label="Email"
-          defaultValue={me?.email || ""}
-          type="email"
-          required
-        />
+      <form className="mt-6 grid gap-4">
+        <Input name="fullName" label="Full name" required />
+        <Input name="email" label="Email" type="email" required />
         <Input name="idNumber" label="Government ID #" required />
         <Input
           name="references"

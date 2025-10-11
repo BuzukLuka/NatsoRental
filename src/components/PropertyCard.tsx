@@ -9,8 +9,7 @@ import { RoomList } from "@/types/api";
 
 export default function PropertyCard({ p }: { p: RoomList }) {
   const router = useRouter();
-  const open = () => router.push(`/room/${p.id}`);
-  console.log("PropertyCard p:", p);
+  const open = () => router.push(`/rooms/${p.slug}`);
 
   return (
     <div
@@ -53,7 +52,7 @@ export default function PropertyCard({ p }: { p: RoomList }) {
 
         {/* View товч дархад картын click ажиллахгүй */}
         <Link
-          href={`/room/${p.id}`}
+          href={`/rooms/${p.slug}`}
           onClick={(e) => e.stopPropagation()}
           className="btn btn-outline mt-3 w-full"
         >

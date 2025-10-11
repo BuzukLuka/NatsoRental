@@ -1,6 +1,8 @@
+// app/notifications/page.tsx
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef } from "react";
+import Link from "next/link";
 import {
   Bell,
   CheckCheck,
@@ -9,70 +11,21 @@ import {
   CreditCard,
   AlertTriangle,
   Home,
+  ExternalLink,
+  Loader2,
 } from "lucide-react";
-import Link from "next/link";
+import {
+  useInfiniteNotifications,
+  useMarkAllNotificationsRead,
+  useMarkNotificationRead,
+  useUnreadCount,
+  type NotiType,
+  type Notification,
+} from "@/hooks/useNotifications";
 
-// Types
-export type NotiType = "payment" | "message" | "system" | "listing";
-export type Noti = {
-  id: string;
-  type: NotiType;
-  title: string;
-  body?: string;
-  href?: string; // where to navigate
-  createdAt: string; // ISO
-  unread?: boolean;
-};
-
-// Mock data (swap to your API/store)
-const seed: Noti[] = [
-  {
-    id: "n1",
-    type: "payment",
-    title: "Invoice paid successfully",
-    body: "Your rent deposit for Brentwood room is confirmed.",
-    href: "/payments/123",
-    createdAt: new Date(Date.now() - 5 * 60 * 1000).toISOString(), // 5m ago
-    unread: true,
-  },
-  {
-    id: "n2",
-    type: "message",
-    title: "New message from Sarah (Kensington)",
-    body: "Hi! The room is still available. When would you like to tour?",
-    href: "/inbox/sarah",
-    createdAt: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
-    unread: true,
-  },
-  {
-    id: "n3",
-    type: "listing",
-    title: "Inglewood Master room price changed",
-    body: "Now $830/mo (was $850).",
-    href: "/property/inglewood-master",
-    createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
-    unread: false,
-  },
-  {
-    id: "n4",
-    type: "system",
-    title: "Scheduled maintenance completed",
-    body: "All services are back online.",
-    createdAt: new Date(Date.now() - 26 * 60 * 60 * 1000).toISOString(),
-    unread: false,
-  },
-  {
-    id: "n5",
-    type: "payment",
-    title: "Refund processed",
-    body: "Your application fee refund has been issued.",
-    href: "/payments/456",
-    createdAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-    unread: false,
-  },
-];
-
-// helpers
+/* ────────────────────────────────────────────────────────────
+   Helpers
+──────────────────────────────────────────────────────────── */
 function timeAgo(iso: string) {
   const d = new Date(iso).getTime();
   const s = Math.floor((Date.now() - d) / 1000);
@@ -85,19 +38,19 @@ function timeAgo(iso: string) {
   if (days < 7) return `${days}d ago`;
   return new Date(iso).toLocaleDateString();
 }
-
 function dateKey(iso: string) {
   const d = new Date(iso);
-  // Today / Yesterday / YYYY-MM-DD
   const today = new Date();
-  const isSame = (a: Date, b: Date) => a.toDateString() === b.toDateString();
+  const same = (a: Date, b: Date) => a.toDateString() === b.toDateString();
   const y = new Date();
   y.setDate(today.getDate() - 1);
-  if (isSame(d, today)) return "Today";
-  if (isSame(d, y)) return "Yesterday";
+  if (same(d, today)) return "Today";
+  if (same(d, y)) return "Yesterday";
   return d.toLocaleDateString();
 }
-
+function isUnread(n: Notification) {
+  return !n?.read_at;
+}
 function iconFor(t: NotiType) {
   const cls = "h-4 w-4";
   switch (t) {
@@ -112,6 +65,9 @@ function iconFor(t: NotiType) {
   }
 }
 
+/* ────────────────────────────────────────────────────────────
+   Small UI bits
+──────────────────────────────────────────────────────────── */
 function Pill({ children }: { children: React.ReactNode }) {
   return (
     <span className="inline-flex items-center gap-1 rounded-full border border-black/10 bg-white/80 px-2.5 py-1 text-xs font-medium text-black shadow-sm backdrop-blur">
@@ -123,31 +79,41 @@ function Pill({ children }: { children: React.ReactNode }) {
 function Toolbar({
   totalUnread,
   onMarkAll,
+  markingAll,
 }: {
   totalUnread: number;
   onMarkAll: () => void;
+  markingAll: boolean;
 }) {
   return (
-    <div className="mb-4 flex items-center justify-between">
-      <div className="flex items-center gap-2 text-sm text-black/70">
-        <Bell className="h-5 w-5" />
-        <span>Notifications</span>
-        <span className="text-black/40">•</span>
-        <span>{totalUnread} unread</span>
-      </div>
-      <div className="flex items-center gap-2">
-        <button
-          onClick={onMarkAll}
-          className="inline-flex items-center gap-2 rounded-xl border border-black/10 bg-white px-3 py-2 text-sm shadow-sm transition hover:shadow-md"
-        >
-          <CheckCheck className="h-4 w-4" /> Mark all read
-        </button>
-        <Link
-          href="/settings/notifications"
-          className="inline-flex items-center gap-2 rounded-xl border border-black/10 bg-white px-3 py-2 text-sm shadow-sm transition hover:shadow-md"
-        >
-          <Settings className="h-4 w-4" /> Settings
-        </Link>
+    <div className="sticky top-16 z-[5] mb-4 rounded-2xl border border-black/10 bg-white/80 px-3 py-2 backdrop-blur supports-[backdrop-filter]:bg-white/60">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 text-sm text-black/70">
+          <Bell className="h-5 w-5" />
+          <span className="font-semibold">Notifications</span>
+          <span className="text-black/40">•</span>
+          <span>{totalUnread} unread</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={onMarkAll}
+            disabled={markingAll || totalUnread === 0}
+            className="inline-flex items-center gap-2 rounded-xl border border-black/10 bg-white px-3 py-2 text-sm shadow-sm transition hover:translate-y-[-1px] hover:shadow-md disabled:opacity-60"
+          >
+            {markingAll ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <CheckCheck className="h-4 w-4" />
+            )}
+            Mark all read
+          </button>
+          <Link
+            href="/settings/notifications"
+            className="inline-flex items-center gap-2 rounded-xl border border-black/10 bg-white px-3 py-2 text-sm shadow-sm transition hover:translate-y-[-1px] hover:shadow-md"
+          >
+            <Settings className="h-4 w-4" /> Settings
+          </Link>
+        </div>
       </div>
     </div>
   );
@@ -168,18 +134,24 @@ function Tabs({
     { key: "system", label: "System" },
   ];
   return (
-    <div className="mb-6 flex w-full gap-2 overflow-x-auto">
+    <div
+      role="tablist"
+      aria-label="Notification filters"
+      className="mb-6 flex w-full gap-2 overflow-x-auto"
+    >
       {tabs.map((t) => (
         <button
           key={t.key}
+          role="tab"
+          aria-selected={value === t.key}
           onClick={() => onChange(t.key)}
-          className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm shadow-sm transition ${
+          className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm shadow-sm transition focus:outline-none focus:ring-2 focus:ring-brand-yellow ${
             value === t.key
               ? "border-black/20 bg-black text-white shadow-md"
               : "border-black/10 bg-white text-black hover:shadow-md"
           }`}
         >
-          {t.key !== "all" && iconFor(t.key)}
+          {t.key !== "all" && iconFor(t.key as NotiType)}
           {t.label}
         </button>
       ))}
@@ -187,45 +159,67 @@ function Tabs({
   );
 }
 
-function NotiCard({ n, onRead }: { n: Noti; onRead: (id: string) => void }) {
+function NotiRow({
+  n,
+  onRead,
+  marking,
+}: {
+  n: Notification;
+  onRead: (id: number) => void;
+  marking?: boolean;
+}) {
+  const unread = isUnread(n);
   return (
     <div className="group relative overflow-hidden rounded-2xl border border-black/10 bg-white p-4 shadow-sm transition hover:shadow-md">
+      {unread && (
+        <span className="absolute left-0 top-0 h-full w-1 bg-amber-500" />
+      )}
       <div className="flex items-start gap-3">
-        <div className="mt-1 rounded-xl bg-black/5 p-2">{iconFor(n.type)}</div>
+        <div
+          className={`mt-1 rounded-xl p-2 ring-1 ring-black/10 ${
+            unread ? "bg-amber-50" : "bg-black/5"
+          }`}
+        >
+          {iconFor(n?.type)}
+        </div>
+
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2">
             <h3 className="line-clamp-1 font-semibold leading-tight">
-              {n.title}
+              {n?.title}
             </h3>
-            {n.unread && (
-              <span className="ml-1 inline-block h-2 w-2 shrink-0 rounded-full bg-amber-500" />
-            )}
           </div>
-          {n.body && (
+          {n?.body && (
             <p className="mt-1 line-clamp-2 text-sm text-black/70">{n.body}</p>
           )}
-          <div className="mt-2 flex items-center gap-2 text-xs text-black/60">
-            <Pill>{n.type}</Pill>
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-black/60">
+            <Pill>{n?.type}</Pill>
             <span>•</span>
-            <span>{timeAgo(n.createdAt)}</span>
+            <span>{timeAgo(n?.created_at)}</span>
           </div>
         </div>
+
         <div className="flex shrink-0 items-center gap-2">
-          {n.href && (
+          {n?.href && (
             <Link
               href={n.href}
-              className="rounded-xl border border-black/10 bg-white px-3 py-2 text-xs font-medium shadow-sm transition hover:shadow-md"
-              onClick={() => onRead(n.id)}
+              className="inline-flex items-center gap-1 rounded-xl border border-black/10 bg-white px-3 py-2 text-xs font-medium shadow-sm transition hover:translate-y-[-1px] hover:shadow-md"
+              onClick={() => unread && onRead(n.id)}
             >
-              Open
+              Open <ExternalLink className="h-3.5 w-3.5" />
             </Link>
           )}
-          {n.unread && (
+          {unread && (
             <button
-              className="rounded-xl border border-black/10 bg-white px-3 py-2 text-xs font-medium shadow-sm transition hover:shadow-md"
+              className="rounded-xl border border-black/10 bg-white px-3 py-2 text-xs font-medium shadow-sm transition hover:translate-y-[-1px] hover:shadow-md disabled:opacity-60"
               onClick={() => onRead(n.id)}
+              disabled={marking}
             >
-              Mark read
+              {marking ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                "Mark read"
+              )}
             </button>
           )}
         </div>
@@ -234,48 +228,56 @@ function NotiCard({ n, onRead }: { n: Noti; onRead: (id: string) => void }) {
   );
 }
 
+/* ────────────────────────────────────────────────────────────
+   Page
+──────────────────────────────────────────────────────────── */
+import { useState } from "react";
+
 export default function NotificationsPage() {
-  const [items, setItems] = useState<Noti[]>(seed);
   const [tab, setTab] = useState<"all" | NotiType>("all");
 
-  const filtered = useMemo(
-    () => items.filter((n) => (tab === "all" ? true : n.type === tab)),
-    [items, tab]
-  );
+  const { data, isLoading, isFetchingNextPage, hasNextPage, fetchNextPage } =
+    useInfiniteNotifications({ type: tab });
+
+  const unreadCount = useUnreadCount();
+
+  const markOne = useMarkNotificationRead();
+  const markAll = useMarkAllNotificationsRead();
+
+  const flat = useMemo(() => {
+    const pages = data?.pages ?? [];
+    return pages.flatMap((p) => p.results);
+  }, [data]);
 
   const grouped = useMemo(() => {
-    const map = new Map<string, Noti[]>();
-    for (const n of filtered) {
-      const k = dateKey(n.createdAt);
+    const map = new Map<string, Notification[]>();
+    for (const n of flat) {
+      const k = dateKey(n?.created_at);
       if (!map.has(k)) map.set(k, []);
       map.get(k)!.push(n);
     }
     return Array.from(map.entries());
-  }, [filtered]);
-
-  const totalUnread = items.filter((n) => n.unread).length;
-
-  function markAllRead() {
-    setItems((prev) => prev.map((n) => ({ ...n, unread: false })));
-  }
-
-  function markRead(id: string) {
-    setItems((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, unread: false } : n))
-    );
-  }
+  }, [flat]);
 
   return (
     <main className="mx-auto max-w-3xl px-4 pb-16 pt-8">
-      <header className="mb-6">
+      <header className="mb-2">
         <h1 className="text-2xl font-extrabold">Notifications</h1>
         <p className="text-sm text-black/70">All your updates in one place</p>
       </header>
 
-      <Toolbar totalUnread={totalUnread} onMarkAll={markAllRead} />
+      <Toolbar
+        totalUnread={unreadCount.data ?? 0}
+        onMarkAll={() => markAll.mutate()}
+        markingAll={markAll.isPending}
+      />
       <Tabs value={tab} onChange={setTab} />
 
-      {filtered.length === 0 ? (
+      {isLoading ? (
+        <div className="rounded-2xl border border-black/10 bg-white p-6 text-sm text-black/60">
+          Loading…
+        </div>
+      ) : flat.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-black/15 bg-white p-10 text-center">
           <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-amber-50 text-amber-700">
             <Bell className="h-6 w-6" />
@@ -292,20 +294,41 @@ export default function NotificationsPage() {
           </Link>
         </div>
       ) : (
-        <div className="flex flex-col gap-4">
-          {grouped.map(([label, list]) => (
-            <section key={label}>
-              <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-black/60">
-                {label}
-              </div>
-              <div className="flex flex-col gap-3">
-                {list.map((n) => (
-                  <NotiCard key={n.id} n={n} onRead={markRead} />
-                ))}
-              </div>
-            </section>
-          ))}
-        </div>
+        <>
+          <div className="flex flex-col gap-4">
+            {grouped.map(([label, list]) => (
+              <section key={label}>
+                <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-black/60">
+                  {label}
+                </div>
+                <div className="flex flex-col gap-3">
+                  {list.map((n) => (
+                    <NotiRow
+                      key={n?.id}
+                      n={n}
+                      onRead={(id) => markOne.mutate(id)}
+                      marking={markOne.isPending}
+                    />
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
+
+          <div className="mt-6 flex items-center justify-center">
+            {hasNextPage ? (
+              <button
+                onClick={() => fetchNextPage()}
+                disabled={isFetchingNextPage}
+                className="rounded-xl border border-black/10 bg-white px-4 py-2 text-sm shadow-sm transition hover:translate-y-[-1px] hover:shadow-md disabled:opacity-60"
+              >
+                {isFetchingNextPage ? "Loading…" : "Load more"}
+              </button>
+            ) : (
+              <div className="text-xs text-black/50">No more notifications</div>
+            )}
+          </div>
+        </>
       )}
     </main>
   );

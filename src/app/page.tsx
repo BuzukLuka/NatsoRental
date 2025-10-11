@@ -2,27 +2,15 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
-import api from "@/lib/client";
 import PropertyGrid from "@/components/PropertyGrid";
-import FiltersBarWrapper from "@/components/FiltersBarWrapper";
 import Steps from "@/components/Steps";
 
-import type { RoomList } from "@/types/api";
+import { useApp } from "@/providers/AppProvider";
+import FiltersBar from "@/components/FiltersBar";
 
 export default function HomePage() {
   // Fetch real rooms from backend
-  const {
-    data: rooms,
-    isLoading,
-    error,
-  } = useQuery<RoomList[]>({
-    queryKey: ["rooms"],
-    queryFn: async () => {
-      const res = await api.get("/rooms/");
-      return res.data;
-    },
-  });
+  const { rooms, filters, setFilters, isLoading } = useApp();
 
   return (
     <div>
@@ -51,7 +39,7 @@ export default function HomePage() {
             </p>
 
             {/* FiltersBar (hero хувилбар) */}
-            <FiltersBarWrapper variant="hero" />
+            <FiltersBar />
           </div>
         </div>
       </section>
@@ -85,11 +73,7 @@ export default function HomePage() {
             Loading rooms...
           </div>
         )}
-        {error && (
-          <div className="text-center py-10 text-red-600">
-            Failed to load rooms.
-          </div>
-        )}
+        {/* If you have error handling, add error state to useApp and use it here. Otherwise, remove this block. */}
         {rooms && rooms.length > 0 ? (
           <PropertyGrid
             items={rooms

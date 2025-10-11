@@ -4,7 +4,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { MapPin, BadgeCheck, Heart, Trash2 } from "lucide-react";
 import { useMemo } from "react";
-import { useStore } from "@/lib/store";
 
 function Chip({ children }: { children: React.ReactNode }) {
   return (
@@ -95,17 +94,9 @@ function WLCard({
 }
 
 export default function WishlistPage() {
-  const { wishlist, properties, removeFromWishlist } = useStore();
 
-  const items = useMemo(() => {
-    const byId = new Map(properties.map((p) => [p.id, p]));
-    return wishlist
-      .map((w) => byId.get(w.id))
-      .filter(Boolean)
-      .map((p) => p!);
-  }, [wishlist, properties]);
 
-  const total = items.length;
+
 
   return (
     <main className="mx-auto max-w-7xl px-4 pb-16 pt-8">
@@ -116,9 +107,9 @@ export default function WishlistPage() {
             Saved places you love in Calgary
           </p>
         </div>
-        {total > 0 && (
+        {/* {total > 0 && (
           <div className="text-sm text-black/70">{total} saved</div>
-        )}
+        )} */}
       </div>
 
       <section className="mb-10 grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -153,7 +144,7 @@ export default function WishlistPage() {
         />
       </section>
 
-      {items.length === 0 ? (
+      {/* {items.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-black/15 bg-white p-10 text-center">
           <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-amber-50 text-amber-700">
             <Heart className="h-6 w-6" />
@@ -185,7 +176,7 @@ export default function WishlistPage() {
             />
           ))}
         </section>
-      )}
+      )} */}
     </main>
   );
 }

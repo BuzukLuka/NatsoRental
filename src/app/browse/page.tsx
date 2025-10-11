@@ -1,48 +1,70 @@
 "use client";
+
 import FiltersBar from "@/components/FiltersBar";
 import PropertyGrid from "@/components/PropertyGrid";
 import Map from "@/components/Map";
-import { useStore } from "@/lib/store";
+import { useApp } from "@/providers/AppProvider";
 import { useMemo } from "react";
 
-export default function BrowsePage({
-  searchParams,
-}: {
-  searchParams: Record<string, string | string[] | undefined>;
-}) {
-  const { properties, filters } = useStore();
+export default function BrowsePage() {
+  const { rooms, filters, isLoading } = useApp();
 
-  const items = useMemo(() => {
-    return properties.filter((p) => {
+  // 🧮 Apply frontend filters (in case backend doesn't yet support all)
+  const filteredRooms = useMemo(() => {
+    if (!rooms) return [];
+
+    return rooms.filter((r) => {
+      if (filters.q && !r.title.toLowerCase().includes(filters.q.toLowerCase()))
+        return false;
+
+      if (filters.type && r.property_type?.name !== filters.type)
+        return false;
+
       if (
-        filters.q &&
-        !`${p.title} ${p.neighborhood}`
-          .toLowerCase()
-          .includes(filters.q.toLowerCase())
+        filters.priceMin !== undefined &&
+        Number(r.price_per_month) < filters.priceMin
       )
         return false;
-      if (filters.type && p.type !== filters.type) return false;
-      if (filters.tenure && p.tenure !== filters.tenure) return false;
-      if (filters.priceMin && p.priceMonthly < filters.priceMin) return false;
-      if (filters.priceMax && p.priceMonthly > filters.priceMax) return false;
-      if (filters.pets && !p.pets) return false;
+
+      if (
+        filters.priceMax !== undefined &&
+        Number(r.price_per_month) > filters.priceMax
+      )
+        return false;
+
+      if (filters.petsAllowed && !r.pets_allowed) return false;
+
       return true;
     });
-  }, [properties, filters]);
+  }, [rooms, filters]);
 
   return (
     <div className="mx-auto max-w-7xl p-4">
       <div className="mb-3">
         <FiltersBar />
       </div>
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <PropertyGrid items={items} />
+
+      {isLoading ? (
+        <div className="text-center py-10 text-black/60">
+          Loading rooms...
         </div>
-        <div>
-          <Map items={items} />
+      ) : filteredRooms.length === 0 ? (
+        <div className="text-center py-10 text-black/60">
+          No rooms match your filters.
         </div>
-      </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          {/* 🏠 Left: property cards */}
+          <div className="lg:col-span-2">
+            <PropertyGrid items={filteredRooms} />
+          </div>
+
+          {/* 🗺️ Right: interactive map */}
+          <div className="sticky top-24 h-[75vh]">
+            <Map items={filteredRooms} />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

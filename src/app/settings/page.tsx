@@ -5,29 +5,82 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/client";
 import Image from "next/image";
 import { useAuth } from "@/providers/AuthProvider";
-import { Camera, Save } from "lucide-react";
+import { Camera, Save, ShieldCheck } from "lucide-react";
 
-type Me = {
+/* ------------------ Types (aligns with your UserSerializer) ------------------ */
+
+type UserRole = "admin" | "staff" | "owner" | "renter" | "worker";
+
+type User = {
   id: number;
   username: string;
-  name: string | null;
   email: string;
+
+  name: string | null;
+  first_name: string | null;
+  last_name: string | null;
   phone: string | null;
   avatar: string | null;
-  role: "admin" | "staff" | "owner" | "renter" | "worker";
+  bio: string | null;
+
+  role: UserRole;
+  role_label: string;
+  is_worker: boolean;
+  is_owner: boolean;
+  is_renter: boolean;
+  is_platform_staff: boolean;
+
+  company_name: string | null;
+  address: string | null;
+  verified: boolean;
+  joined_via_invite: boolean;
 };
 
+type Dashboard = {
+  user: User;
+  // ... other dashboard fields omitted
+};
+
+/* ------------------------------- UI helpers -------------------------------- */
+
+function Badge({
+  children,
+  variant = "neutral",
+}: {
+  children: React.ReactNode;
+  variant?: "neutral" | "success" | "warn";
+}) {
+  const cls =
+    variant === "success"
+      ? "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"
+      : variant === "warn"
+      ? "bg-amber-50 text-amber-700 ring-1 ring-amber-200"
+      : "bg-black/5 text-black/70 ring-1 ring-black/10";
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs ${cls}`}
+    >
+      {children}
+    </span>
+  );
+}
+
+/* --------------------------------- Page ----------------------------------- */
+
 export default function SettingsPage() {
-  const { user, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
 
-  const { data, isLoading } = useQuery<Me>({
+  // Fetch dashboard then grab user
+  const { data, isLoading } = useQuery<Dashboard>({
     queryKey: ["me"],
     queryFn: async () => (await api.get("/users/me/")).data,
     enabled: isAuthenticated,
   });
 
-  const [form, setForm] = useState<Partial<Me>>({});
+  const me = data?.user;
+
+  const [form, setForm] = useState<Partial<User> & { password?: string }>({});
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -35,9 +88,25 @@ export default function SettingsPage() {
   const mutation = useMutation({
     mutationFn: async () => {
       const fd = new FormData();
-      Object.entries(form).forEach(([key, val]) => {
-        if (val !== undefined && val !== null) fd.append(key, val as string);
+
+      // include only changed fields
+      (
+        [
+          "name",
+          "first_name",
+          "last_name",
+          "phone",
+          "bio",
+          "company_name",
+          "address",
+          "role", // backend will reject if not platform staff
+        ] as const
+      ).forEach((k) => {
+        const v = form[k];
+        if (v !== undefined && v !== null) fd.append(k, String(v));
       });
+
+      if (form.password) fd.append("password", form.password);
       if (avatarFile) fd.append("avatar", avatarFile);
 
       return await api.patch("/users/me/", fd, {
@@ -50,10 +119,14 @@ export default function SettingsPage() {
     },
     onError: (err: any) => {
       const msg =
-        err.response?.data?.detail ||
-        Object.values(err.response?.data || {}).join(", ") ||
+        err?.response?.data?.detail ||
+        (err?.response?.data
+          ? Object.values(err.response.data as Record<string, any>)
+              .flat()
+              .join(", ")
+          : null) ||
         "Update failed.";
-      setError(msg);
+      setError(String(msg));
     },
   });
 
@@ -80,7 +153,7 @@ export default function SettingsPage() {
     );
   }
 
-  if (isLoading) {
+  if (isLoading || !me) {
     return (
       <main className="mx-auto max-w-3xl px-4 pb-16 pt-8 text-center text-black/70">
         Loading profile…
@@ -88,21 +161,29 @@ export default function SettingsPage() {
     );
   }
 
-  const me = data!;
+  const canChangeRole = me.is_platform_staff;
+
   return (
     <main className="mx-auto max-w-3xl px-4 pb-16 pt-8">
-      <div className="mb-6">
-        <h1 className="text-2xl font-extrabold">Account Settings</h1>
-        <p className="text-sm text-black/70">
-          Update your personal details and account info.
-        </p>
+      <div className="mb-6 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          {me.verified ? (
+            <Badge variant="success">
+              <ShieldCheck className="h-3.5 w-3.5" />
+              Verified
+            </Badge>
+          ) : (
+            <Badge variant="neutral">Not verified</Badge>
+          )}
+          <Badge variant="neutral">{me.role_label}</Badge>
+        </div>
       </div>
 
       <form
         onSubmit={handleSubmit}
         className="space-y-5 rounded-2xl border border-black/10 bg-white p-6 shadow-sm"
       >
-        {/* Avatar Upload */}
+        {/* Avatar */}
         <div className="flex items-center gap-4">
           <div className="relative h-16 w-16">
             <Image
@@ -133,7 +214,7 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* Fields */}
+        {/* Name & Phone */}
         <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
             <label className="block text-sm font-medium text-black/80">
@@ -161,23 +242,121 @@ export default function SettingsPage() {
           </div>
         </div>
 
+        {/* First/Last */}
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div>
+            <label className="block text-sm font-medium text-black/80">
+              First Name
+            </label>
+            <input
+              type="text"
+              defaultValue={me.first_name || ""}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, first_name: e.target.value }))
+              }
+              className="w-full rounded-xl border border-black/10 px-3 py-2 focus:ring-2 focus:ring-brand-yellow"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-black/80">
+              Last Name
+            </label>
+            <input
+              type="text"
+              defaultValue={me.last_name || ""}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, last_name: e.target.value }))
+              }
+              className="w-full rounded-xl border border-black/10 px-3 py-2 focus:ring-2 focus:ring-brand-yellow"
+            />
+          </div>
+        </div>
+
+        {/* Company & Address */}
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div>
+            <label className="block text-sm font-medium text-black/80">
+              Company
+            </label>
+            <input
+              type="text"
+              defaultValue={me.company_name || ""}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, company_name: e.target.value }))
+              }
+              className="w-full rounded-xl border border-black/10 px-3 py-2 focus:ring-2 focus:ring-brand-yellow"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-black/80">
+              Address
+            </label>
+            <input
+              type="text"
+              defaultValue={me.address || ""}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, address: e.target.value }))
+              }
+              className="w-full rounded-xl border border-black/10 px-3 py-2 focus:ring-2 focus:ring-brand-yellow"
+            />
+          </div>
+        </div>
+
+        {/* Role (disabled for non-staff) */}
         <div>
           <label className="block text-sm font-medium text-black/80">
             Role
           </label>
           <select
             defaultValue={me.role}
+            disabled={!canChangeRole}
             onChange={(e) =>
-              setForm((f) => ({ ...f, role: e.target.value as Me["role"] }))
+              setForm((f) => ({ ...f, role: e.target.value as UserRole }))
             }
-            className="w-full rounded-xl border border-black/10 bg-white px-3 py-2 focus:ring-2 focus:ring-brand-yellow"
+            className="w-full rounded-xl border border-black/10 bg-white px-3 py-2 focus:ring-2 focus:ring-brand-yellow disabled:opacity-60"
+            title={
+              !canChangeRole ? "Only platform staff can change role" : undefined
+            }
           >
             <option value="renter">Renter</option>
             <option value="owner">Owner</option>
             <option value="worker">Worker</option>
+            <option value="staff">Platform Staff</option>
+            <option value="admin">Admin</option>
           </select>
         </div>
 
+        {/* Bio */}
+        <div>
+          <label className="block text-sm font-medium text-black/80">Bio</label>
+          <textarea
+            rows={4}
+            defaultValue={me.bio || ""}
+            onChange={(e) => setForm((f) => ({ ...f, bio: e.target.value }))}
+            className="w-full rounded-xl border border-black/10 px-3 py-2 focus:ring-2 focus:ring-brand-yellow"
+            placeholder="Tell hosts a bit about yourself…"
+          />
+        </div>
+
+        {/* Password change (optional) */}
+        <div>
+          <label className="block text-sm font-medium text-black/80">
+            New Password
+          </label>
+          <input
+            type="password"
+            placeholder="••••••••"
+            onChange={(e) =>
+              setForm((f) => ({ ...f, password: e.target.value }))
+            }
+            className="w-full rounded-xl border border-black/10 px-3 py-2 focus:ring-2 focus:ring-brand-yellow"
+          />
+          <p className="mt-1 text-xs text-black/50">
+            Leave empty to keep your current password.
+          </p>
+        </div>
+
+        {/* Messages */}
         {error && (
           <div className="rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-700">
             {error}
@@ -189,14 +368,29 @@ export default function SettingsPage() {
           </div>
         )}
 
-        <button
-          type="submit"
-          disabled={mutation.isPending}
-          className="inline-flex items-center gap-2 rounded-xl bg-black px-4 py-2 text-sm font-medium text-white hover:translate-y-[-1px] hover:shadow-md disabled:opacity-70"
-        >
-          <Save className="h-4 w-4" />
-          {mutation.isPending ? "Saving..." : "Save Changes"}
-        </button>
+        {/* Save */}
+        <div className="flex gap-3 justify-end items-center">
+          <button
+            type="submit"
+            disabled={mutation.isPending}
+            className="inline-flex items-center gap-2 rounded-xl bg-black px-4 py-2 text-sm font-medium text-white hover:translate-y-[-1px] hover:shadow-md disabled:opacity-70"
+          >
+            <Save className="h-4 w-4" />
+            {mutation.isPending ? "Saving..." : "Save Changes"}
+          </button>
+          <button
+            type="button"
+            onClick={() => window.history.back()}
+            className="inline-flex items-center gap-2 rounded-xl bg-gray-200 px-4 py-2 text-sm font-medium text-black hover:translate-y-[-1px] hover:shadow-md"
+          >
+            Return
+          </button>
+        </div>
+
+        {/* Small meta row */}
+        <div className="text-xs text-black/50">
+          Joined via invite: {me.joined_via_invite ? "Yes" : "No"}
+        </div>
       </form>
     </main>
   );

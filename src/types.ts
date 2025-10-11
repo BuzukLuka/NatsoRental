@@ -51,20 +51,34 @@ export type Maintenance = {
 };
 
 export type Filters = {
-  cityArea: string;
-  monthlyRange: string;
-  petsAllowed: boolean;
-  noPets: any;
-  waitingList: any;
-  contactAdmin: any;
-  signupFee: any;
-  signupFeeAmount: number;
-  q: string;
-  type?: PType;
-  tenure?: Tenure;
-  priceMin?: number;
-  priceMax?: number;
-  pets?: boolean;
+  /** Text search, e.g. by title, description, address */
+  q?: string; // maps to ?search=
+
+  /** City or area filter (optional, frontend-only) */
+  cityArea?: string;
+
+  /** Monthly rent range (used for UI selection only) */
+  monthlyRange?: "upto_600" | "600_800" | "800_1200" | "1200_plus";
+
+  /** Pets policy */
+  petsAllowed?: boolean; // maps to ?pets_allowed=true
+  noPets?: boolean; // UI convenience only
+
+  /** Type of room/property */
+  type?: string; // maps to ?type=Basement (property_type name)
+
+  /** Rental term / tenure length */
+  tenure?: "try" | "mid" | "long"; // optional future filter
+
+  /** Numeric min/max price — backend expects price_per_month__gte/lte */
+  priceMin?: number; // maps to ?min_price=
+  priceMax?: number; // maps to ?max_price=
+
+  /** Optional business/UI flags */
+  waitingList?: boolean;
+  contactAdmin?: boolean;
+  signupFee?: boolean;
+  signupFeeAmount?: number;
 };
 
 // Removed duplicate User interface to resolve duplicate identifier error.

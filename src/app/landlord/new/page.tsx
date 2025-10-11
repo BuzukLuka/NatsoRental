@@ -1,14 +1,12 @@
 "use client";
-import { useStore } from "@/lib/store";
 import Input from "@/components/ui/Input";
 
 export default function NewListingPage() {
-  const { createListing } = useStore();
   async function submit(formData: FormData) {
-    createListing({
-      title: String(formData.get("title") || ""),
-      priceMonthly: Number(formData.get("price") || 0),
-    });
+    // Handle form submission here (e.g., send to API)
+    const title = String(formData.get("title") || "");
+    const priceMonthly = Number(formData.get("price") || 0);
+    // Example: console.log({ title, priceMonthly });
   }
   return (
     <div className="mx-auto max-w-2xl p-4">

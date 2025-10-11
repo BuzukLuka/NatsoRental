@@ -26,14 +26,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const refreshUser = async () => {
     try {
       const res = await api.get("/users/me/");
-      setUser(res.data);
+      // res.data is the dashboard; keep just the user part in auth context
+      setUser(res.data?.user ?? null);
     } catch {
       setUser(null);
     } finally {
       setLoading(false);
     }
   };
-
   useEffect(() => {
     refreshUser();
   }, []);
@@ -79,7 +79,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
 export const useAuth = () => {
   const ctx = useContext(AuthContext);
-  if (!ctx)
-    throw new Error("useAuth must be used inside <AuthProvider />");
+  if (!ctx) throw new Error("useAuth must be used inside <AuthProvider />");
   return ctx;
 };

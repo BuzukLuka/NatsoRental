@@ -34,15 +34,24 @@ export interface RoomDetail {
   description?: string;
   price_per_month: string;
   address?: string;
-  coordinates: string;
+  coordinates: { lat: number; lng: number } | string;
   is_active: boolean;
   is_featured: boolean;
   thumbnail?: string | null;
   property_type: PropertyType;
   images: RoomImage[];
   average_rating: number;
-  reviews?: string; // summary / url list
-  created_at: string; // date-time
+  reviews?: any[]; // or use a dedicated Review type if you have one
+  bathrooms: number;
+  bedrooms: number;
+  furnished: boolean;
+  pets_allowed: boolean;
+  parking: boolean;
+  size?: string;
+  tenure?: string;
+  bills_included: boolean;
+  created_at: string; // ISO timestamp
+  updated_at: string; // ISO timestamp
 }
 
 /* ---------- BOOKINGS ---------- */
@@ -65,6 +74,30 @@ export interface Booking {
   payment_status: string;
   created_at: string;
 }
+
+// types/api.ts (example)
+export interface BookingSummary {
+  id: number;
+  status: "pending" | "confirmed" | "checked_in" | "completed" | "canceled";
+  total_price: string;
+  check_in: string; // ISO: "YYYY-MM-DD"
+  check_out: string; // ISO
+  nights: number;
+  created_at: string;
+  room: {
+    id: number;
+    slug: string;
+    title: string;
+    thumbnail?: string | null;
+  };
+  payment_status?: "pending" | "paid" | "failed" | null;
+}
+
+export type CreateBookingInput = {
+  room_id: number;
+  check_in: string; // "YYYY-MM-DD"
+  check_out: string; // "YYYY-MM-DD"
+};
 
 /* ---------- PAYMENTS ---------- */
 export type PaymentType = "card" | "wallet" | "cash";
@@ -146,12 +179,7 @@ export interface ServiceRequest {
 }
 
 /* ---------- USERS ---------- */
-export type UserRole =
-  | "admin"
-  | "staff"
-  | "owner"
-  | "renter"
-  | "worker";
+export type UserRole = "admin" | "staff" | "owner" | "renter" | "worker";
 
 export interface Register {
   username: string;
@@ -200,3 +228,32 @@ export interface ServiceWorker {
 export type ID = number | string;
 export type DateTime = string; // ISO 8601
 export type Decimal = string;
+
+export interface User {
+  // core
+  id: number;
+  username: string;
+  email: string;
+
+  // profile
+  name: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  phone: string | null;
+  avatar: string | null; // absolute URL or null
+  bio: string | null;
+
+  // role
+  role: UserRole;
+  role_label: string; // e.g. "Renter" (read-only)
+  is_worker: boolean; // read-only
+  is_owner: boolean; // read-only
+  is_renter: boolean; // read-only
+  is_platform_staff: boolean; // read-only
+
+  // org / address / verification
+  company_name: string | null;
+  address: string | null;
+  verified: boolean;
+  joined_via_invite: boolean;
+}

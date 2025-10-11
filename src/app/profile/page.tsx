@@ -1,18 +1,38 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
 import Image from "next/image";
 import Link from "next/link";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
-  User as UserIcon,
-  Mail,
   CreditCard,
   BadgeCheck,
   Home,
+  Mail,
+  User as UserIcon,
+  MapPin,
+  Building2,
+  IdCard,
+  CalendarDays,
+  DollarSign,
+  LayoutList,
+  Wrench,
+  ReceiptText,
+  Sparkles,
 } from "lucide-react";
 import api from "@/lib/client";
 import { useAuth } from "@/providers/AuthProvider";
+import { useDashboard } from "@/hooks/useDashboard";
+import {
+  useServiceRequests,
+  useCreateServiceRequest,
+  useMarkServiceRequestCompleted,
+} from "@/hooks/useServiceRequests";
+import type { ServiceRequest } from "@/types/serviceRequests";
+import { Tabs, TabPanel } from "@/components/ui/Tabs";
+import ServicesContent from "@/components/ServicesComponent";
 
+/* ---------- tiny helpers ---------- */
 function Section({
   title,
   children,
@@ -27,7 +47,6 @@ function Section({
     </section>
   );
 }
-
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between border-b border-black/5 py-2 last:border-b-0">
@@ -36,53 +55,65 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
     </div>
   );
 }
-
-type Room = {
-  id: number;
-  title: string;
-  price_per_month: string;
-  thumbnail: string | null;
-  address: string;
-  property_type?: { name: string };
+function Pill({
+  children,
+  tone = "neutral",
+}: {
+  children: React.ReactNode;
+  tone?: "neutral" | "success" | "warn";
+}) {
+  const base =
+    "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs ring-1";
+  const toneCls =
+    tone === "success"
+      ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
+      : tone === "warn"
+      ? "bg-amber-50 text-amber-700 ring-amber-200"
+      : "bg-black/5 text-black/70 ring-black/10";
+  return <span className={`${base} ${toneCls}`}>{children}</span>;
+}
+const StatusPill = ({ s }: { s: ServiceRequest["status"] }) => {
+  const map = {
+    pending: "bg-amber-50 text-amber-700 ring-amber-200",
+    in_progress: "bg-blue-50 text-blue-700 ring-blue-200",
+    completed: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+    canceled: "bg-gray-100 text-gray-600 ring-gray-200",
+  } as const;
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs ring-1 ${map[s]}`}
+    >
+      {s.replace("_", " ")}
+    </span>
+  );
 };
-
-type Booking = {
-  id: number;
-  status: string;
-  check_in: string;
-  check_out: string;
-  total_price: string;
-  room: Room;
-};
-
-type Payment = {
-  id: number;
-  amount: string;
-  status: string;
-  created_at: string;
-  payment_type: string;
-};
+/* ---------------------------------- */
 
 export default function ProfilePage() {
+  const router = useRouter();
   const { user, isAuthenticated } = useAuth();
+  const { data: dash, isLoading } = useDashboard(isAuthenticated);
 
-  const {
-    data: bookings,
-    isLoading: loadingBookings,
-  } = useQuery<Booking[]>({
-    queryKey: ["bookings"],
-    queryFn: async () => (await api.get("/bookings/")).data.results || [],
-    enabled: isAuthenticated,
-  });
+  // Tabs
+  const [tab, setTab] = useState<"overview" | "services" | "payments">(
+    "overview"
+  );
 
-  const {
-    data: payments,
-    isLoading: loadingPayments,
-  } = useQuery<Payment[]>({
-    queryKey: ["payments"],
-    queryFn: async () => (await api.get("/payments/")).data.results || [],
-    enabled: isAuthenticated,
-  });
+  // Pay now
+  const [paying, setPaying] = useState(false);
+  const [payError, setPayError] = useState<string | null>(null);
+
+  // Services
+  const { data: requests, isLoading: loadingRequests } =
+    useServiceRequests(isAuthenticated);
+  const createReq = useCreateServiceRequest();
+  const completeReq = useMarkServiceRequestCompleted();
+  const [reqType, setReqType] = useState<
+    "cleaning" | "repair" | "maintenance" | "other"
+  >("cleaning");
+  const [reqDesc, setReqDesc] = useState("");
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   if (!isAuthenticated) {
     return (
@@ -100,14 +131,35 @@ export default function ProfilePage() {
     );
   }
 
+  const profile = dash?.user ?? user;
+  const current = dash?.current_rental ?? null;
+
+  const handlePay = async () => {
+    if (!current?.id) return;
+    setPayError(null);
+    setPaying(true);
+    try {
+      const res = await api.post("/payments/create-session/", {
+        booking_id: current.id,
+      });
+      const url = res.data?.checkout_url;
+      if (url) window.location.href = url;
+      else throw new Error("No checkout_url returned");
+    } catch (e: any) {
+      setPayError(
+        e?.response?.data?.detail ||
+          "Could not start checkout. Please try again."
+      );
+      setPaying(false);
+    }
+  };
+
   return (
     <main className="mx-auto max-w-6xl px-4 pb-16 pt-8">
+      {/* Header */}
       <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-extrabold">Profile</h1>
-          <p className="text-sm text-black/70">
-            Your account, rentals & payments
-          </p>
         </div>
         <Link href="/settings" className="btn btn-outline">
           Edit profile
@@ -115,13 +167,13 @@ export default function ProfilePage() {
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        {/* Left panel */}
+        {/* Left: Account card */}
         <div className="lg:col-span-1">
           <Section title="Account">
             <div className="mb-3 flex items-center gap-3">
-              {user?.avatar ? (
+              {profile?.avatar ? (
                 <Image
-                  src={user.avatar}
+                  src={profile.avatar}
                   alt="Avatar"
                   width={48}
                   height={48}
@@ -132,167 +184,308 @@ export default function ProfilePage() {
                   <UserIcon className="h-6 w-6" />
                 </div>
               )}
-              <div>
-                <div className="font-semibold">{user?.name || user?.username}</div>
+              <div className="min-w-0">
+                <div className="truncate font-semibold">
+                  {profile?.name ||
+                    `${profile?.first_name ?? ""} ${
+                      profile?.last_name ?? ""
+                    }`.trim() ||
+                    profile?.username}
+                </div>
                 <div className="flex items-center gap-1 text-sm text-black/70">
-                  <Mail className="h-4 w-4" /> {user?.email}
+                  <Mail className="h-4 w-4" /> {profile?.email}
                 </div>
               </div>
             </div>
-            <Row label="Role" value={user?.role || "—"} />
+
+            <div className="mb-3 flex flex-wrap gap-2">
+              <Pill>
+                <IdCard className="h-3.5 w-3.5" />
+                {profile?.role ?? "—"}
+              </Pill>
+              {profile?.verified ? (
+                <Pill tone="success">
+                  <BadgeCheck className="h-3.5 w-3.5" />
+                  Verified
+                </Pill>
+              ) : (
+                <Pill>Not verified</Pill>
+              )}
+            </div>
+
             <Row
               label="Bookings"
-              value={loadingBookings ? "…" : bookings?.length || 0}
+              value={isLoading ? "…" : dash?.stats.bookings_count ?? 0}
             />
             <Row
               label="Payments"
-              value={loadingPayments ? "…" : payments?.length || 0}
+              value={isLoading ? "…" : dash?.stats.payments_count ?? 0}
             />
+            {profile?.company_name && (
+              <Row label="Company" value={profile.company_name} />
+            )}
+            {profile?.address && (
+              <Row
+                label="Address"
+                value={
+                  <span className="inline-flex items-center gap-1">
+                    <MapPin className="h-3.5 w-3.5" />
+                    {profile.address}
+                  </span>
+                }
+              />
+            )}
           </Section>
+
+          {profile?.bio ? (
+            <Section title="About">
+              <p className="whitespace-pre-wrap text-sm text-black/80">
+                {profile.bio}
+              </p>
+            </Section>
+          ) : null}
         </div>
 
-        {/* Right panel */}
+        {/* Right: Tabs + Panels */}
         <div className="flex flex-col gap-4 lg:col-span-2">
-          {/* Current Booking */}
-          <Section title="Current rental">
-            {loadingBookings ? (
-              <div className="text-sm text-black/60">Loading...</div>
-            ) : bookings && bookings.length > 0 ? (
-              <div className="flex flex-col gap-3 md:flex-row">
-                <div className="relative h-28 w-full overflow-hidden rounded-xl md:h-24 md:w-40">
-                  <Image
-                    src={bookings[0].room.thumbnail || "/placeholder.png"}
-                    alt={bookings[0].room.title}
-                    fill
-                    className="object-cover"
-                  />
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold leading-tight">
-                          {bookings[0].room.title}
-                        </h3>
-                        <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-xs text-emerald-700 ring-1 ring-emerald-200">
-                          <BadgeCheck className="h-3 w-3" />{" "}
-                          {bookings[0].status}
+          <Tabs
+            tabs={[
+              {
+                value: "overview",
+                label: "Overview",
+                icon: <LayoutList className="h-4 w-4" />,
+              },
+              {
+                value: "services",
+                label: "Services",
+                icon: <Wrench className="h-4 w-4" />,
+              },
+              {
+                value: "payments",
+                label: "Payments",
+                icon: <ReceiptText className="h-4 w-4" />,
+              },
+            ]}
+            value={tab}
+            onChange={(v) => setTab(v as any)}
+            className="sticky top-[64px] z-[5] bg-transparent"
+          />
+
+          {/* OVERVIEW */}
+          <TabPanel value="overview" activeValue={tab} labelledBy="overview">
+            <Section title="Current rental">
+              {isLoading ? (
+                <div className="text-sm text-black/60">Loading...</div>
+              ) : current ? (
+                <div className="flex flex-col gap-3 md:flex-row">
+                  <div className="relative h-28 w-full overflow-hidden rounded-xl md:h-24 md:w-40">
+                    <Image
+                      src={current.room.thumbnail || "/placeholder.png"}
+                      alt={current.room.title}
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-semibold leading-tight">
+                            {current.room.title}
+                          </h3>
+                          <Pill
+                            tone={
+                              current.status === "confirmed" ||
+                              current.status === "checked_in"
+                                ? "success"
+                                : "neutral"
+                            }
+                          >
+                            <BadgeCheck className="h-3.5 w-3.5" />
+                            {current.status}
+                          </Pill>
+                          {current.payment_status && (
+                            <Pill
+                              tone={
+                                current.payment_status === "paid"
+                                  ? "success"
+                                  : "warn"
+                              }
+                            >
+                              <DollarSign className="h-3.5 w-3.5" />
+                              {current.payment_status}
+                            </Pill>
+                          )}
+                        </div>
+                        <p className="text-sm text-black/70">
+                          {current.room.address}
+                        </p>
+                        <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-black/60">
+                          <span className="inline-flex items-center gap-1">
+                            <CalendarDays className="h-3.5 w-3.5" />
+                            {current.check_in} → {current.check_out} (
+                            {(() => {
+                              const checkIn = new Date(current.check_in);
+                              const checkOut = new Date(current.check_out);
+                              const diff =
+                                (checkOut.getTime() - checkIn.getTime()) /
+                                (1000 * 60 * 60 * 24);
+                              return Math.ceil(diff);
+                            })()}{" "}
+                            nights)
+                          </span>
+                          <span className="inline-flex items-center gap-1">
+                            <Building2 className="h-3.5 w-3.5" />
+                            {current.room.property_type?.name}
+                          </span>
+                        </div>
+                      </div>
+                      <Link
+                        href={`/rooms/${current.room.slug}`}
+                        className="btn btn-outline whitespace-nowrap"
+                      >
+                        View
+                      </Link>
+                    </div>
+
+                    <div className="mt-3 flex items-center justify-between">
+                      <div className="text-sm">
+                        <span className="text-black/60">$</span>
+                        <span className="text-lg font-extrabold">
+                          {current.room.price_per_month}
                         </span>
+                        <span className="text-black/60">/mo</span>
                       </div>
-                      <p className="text-sm text-black/70">
-                        {bookings[0].room.address}
-                      </p>
+                      <button
+                        onClick={handlePay}
+                        disabled={paying}
+                        className="inline-flex items-center gap-2 rounded-xl bg-black px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:translate-y-[-1px] hover:shadow-md disabled:opacity-60"
+                      >
+                        <CreditCard className="h-4 w-4" />
+                        {paying ? "Redirecting…" : "Pay this month"}
+                      </button>
                     </div>
-                    <Link
-                      href={`/room/${bookings[0].room.id}`}
-                      className="btn btn-outline whitespace-nowrap"
-                    >
-                      View
+
+                    {payError && (
+                      <div className="mt-3 rounded-xl border border-red-100 bg-red-50 px-3 py-2 text-sm text-red-700">
+                        {payError}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center gap-2 py-6 text-center">
+                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-50 text-amber-700">
+                    <Home className="h-6 w-6" />
+                  </div>
+                  <div className="font-semibold">No active rental</div>
+                  <p className="max-w-md text-sm text-black/70">
+                    Reserve a room to see it here. You can browse available
+                    homes and add to your wishlist.
+                  </p>
+                  <div className="mt-2 flex gap-2">
+                    <Link href="/browse" className="btn btn-outline">
+                      Browse homes
                     </Link>
                   </div>
-                  <div className="mt-3 flex items-center justify-between">
-                    <div className="text-sm">
-                      <span className="text-black/60">$</span>
-                      <span className="text-lg font-extrabold">
-                        {bookings[0].room.price_per_month}
-                      </span>
-                      <span className="text-black/60">/mo</span>
-                    </div>
-                    <button
-                      onClick={() =>
-                        alert("Integrate Stripe payment here 💳")
-                      }
-                      className="inline-flex items-center gap-2 rounded-xl bg-black px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:translate-y-[-1px] hover:shadow-md"
-                    >
-                      <CreditCard className="h-4 w-4" />
-                      Pay this month
-                    </button>
-                  </div>
                 </div>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center gap-2 py-6 text-center">
-                <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-amber-50 text-amber-700">
-                  <Home className="h-6 w-6" />
-                </div>
-                <div className="font-semibold">No active rental</div>
-                <p className="max-w-md text-sm text-black/70">
-                  Reserve a room to see it here. You can browse available homes
-                  and add to your wishlist.
-                </p>
-                <div className="mt-2 flex gap-2">
-                  <Link href="/browse" className="btn btn-outline">
-                    Browse homes
-                  </Link>
-                </div>
-              </div>
-            )}
-          </Section>
+              )}
+            </Section>
 
-          {/* Booking history */}
-          <Section title="Rental history">
-            {loadingBookings ? (
-              <div className="text-sm text-black/60">Loading...</div>
-            ) : bookings && bookings.length > 0 ? (
-              <div className="flex flex-col gap-3">
-                {bookings.map((b) => (
-                  <div
-                    key={b.id}
-                    className="flex items-center justify-between gap-3 rounded-xl border border-black/10 p-3"
-                  >
-                    <div className="min-w-0">
-                      <div className="font-medium leading-tight line-clamp-1">
-                        {b.room.title}
-                      </div>
-                      <div className="text-xs text-black/60">
-                        {b.room.address} · ${b.total_price}
-                      </div>
-                    </div>
-                    <Link
-                      href={`/room/${b.room.id}`}
-                      className="btn btn-outline"
+            <Section title="Rental history">
+              {isLoading ? (
+                <div className="text-sm text-black/60">Loading...</div>
+              ) : dash?.recent_bookings?.length ? (
+                <div className="flex flex-col gap-3">
+                  {dash.recent_bookings.map((b) => (
+                    <div
+                      key={b.id}
+                      className="flex items-center justify-between gap-3 rounded-xl border border-black/10 p-3"
                     >
-                      View
-                    </Link>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="text-sm text-black/70">No bookings yet.</div>
-            )}
-          </Section>
+                      <div className="min-w-0">
+                        <div className="line-clamp-1 font-medium leading-tight">
+                          {b.room.title}
+                        </div>
+                        <div className="text-xs text-black/60">
+                          {b.room.address} · ${b.total_price}
+                        </div>
+                      </div>
+                      <Link
+                        href={`/rooms/${b.room.slug}`}
+                        className="btn btn-outline"
+                      >
+                        View
+                      </Link>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-sm text-black/70">No bookings yet.</div>
+              )}
+            </Section>
+          </TabPanel>
 
-          {/* Payment history */}
-          <Section title="Payment history">
-            {loadingPayments ? (
-              <div className="text-sm text-black/60">Loading...</div>
-            ) : payments && payments.length > 0 ? (
-              <div className="overflow-hidden rounded-xl border border-black/10">
-                <table className="w-full text-sm">
-                  <thead className="bg-black/5 text-left">
-                    <tr>
-                      <th className="px-3 py-2">Date</th>
-                      <th className="px-3 py-2">Amount</th>
-                      <th className="px-3 py-2">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {payments.map((p) => (
-                      <tr key={p.id} className="border-t border-black/5">
-                        <td className="px-3 py-2">
-                          {new Date(p.created_at).toLocaleDateString()}
-                        </td>
-                        <td className="px-3 py-2">${p.amount}</td>
-                        <td className="px-3 py-2 text-black/60">{p.status}</td>
+          {/* SERVICES */}
+          <TabPanel value="services" activeValue={tab} labelledBy="services">
+            <Section title="Services & maintenance">
+              {!current ? (
+                <div className="rounded-xl border border-black/10 bg-black/[0.02] p-4 text-sm text-black/70">
+                  You need an active rental to request a service.
+                </div>
+              ) : (
+                <ServicesContent
+                  currentBookingId={current.id}
+                  roomTitle={current.room.title}
+                  requests={
+                    requests?.filter((r) => r.booking_id === current.id) ?? []
+                  }
+                  loadingRequests={loadingRequests}
+                  createReq={createReq}
+                  completeReq={completeReq}
+                />
+              )}
+            </Section>
+          </TabPanel>
+
+          {/* PAYMENTS */}
+          <TabPanel value="payments" activeValue={tab} labelledBy="payments">
+            <Section title="Payment history">
+              {isLoading ? (
+                <div className="text-sm text-black/60">Loading...</div>
+              ) : dash?.recent_payments?.length ? (
+                <div className="overflow-hidden rounded-xl border border-black/10">
+                  <table className="w-full text-sm">
+                    <thead className="bg-black/5 text-left">
+                      <tr>
+                        <th className="px-3 py-2">Date</th>
+                        <th className="px-3 py-2">Amount</th>
+                        <th className="px-3 py-2">Status</th>
+                        <th className="px-3 py-2">Txn</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="text-sm text-black/70">No payments yet.</div>
-            )}
-          </Section>
+                    </thead>
+                    <tbody>
+                      {dash.recent_payments.map((p) => (
+                        <tr key={p.id} className="border-t border-black/5">
+                          <td className="px-3 py-2">
+                            {new Date(p.created_at).toLocaleDateString()}
+                          </td>
+                          <td className="px-3 py-2">${p.amount}</td>
+                          <td className="px-3 py-2 text-black/60">
+                            {p.status}
+                          </td>
+                          <td className="break-all px-3 py-2 text-xs text-black/60">
+                            {p.transaction_id || "—"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="text-sm text-black/70">No payments yet.</div>
+              )}
+            </Section>
+          </TabPanel>
         </div>
       </div>
     </main>
