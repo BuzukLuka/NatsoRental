@@ -197,13 +197,14 @@ export default function RoomDetailPage() {
               {typeof room.coordinates === "string" ? (
                 (() => {
                   const [lat, lng] = room.coordinates.split(",").map(Number);
-                  return <MiniMap lat={lat} lng={lng} title={room.title} price={""} />;
+                  return <MiniMap lat={lat} lng={lng} title={room.title} />;
                 })()
               ) : (
                 <MiniMap
-                    lat={room.coordinates.lat}
-                    lng={room.coordinates.lng}
-                    title={room.title} price={""}                />
+                  lat={room.coordinates.lat}
+                  lng={room.coordinates.lng}
+                  title={room.title}
+                />
               )}
             </div>
           )}
