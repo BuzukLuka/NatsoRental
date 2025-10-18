@@ -14,9 +14,15 @@ import { MessageCircle } from "lucide-react";
 import { useStartChatWithRoom } from "@/hooks/useMessagingExtras";
 import { useAuth } from "@/providers/AuthProvider";
 import SupportButton from "@/components/Support";
+import Alert from "@/components/ui/Alert";
 
 export default function RoomDetailPage() {
-  const router = useRouter();
+  type AlertVariant = "warning" | "info" | "success" | "danger";
+  const [alert, setAlert] = useState<{
+    variant: AlertVariant;
+    title: string;
+    lines: string[];
+  } | null>(null);
   const { slug } = useParams<{ slug: string }>();
   const [applyOpen, setApplyOpen] = useState(false);
   const { data: room, isLoading, error } = useRoom(slug);
@@ -40,19 +46,27 @@ export default function RoomDetailPage() {
   const handleReserve = async () => {
     if (!room) return;
     if (!checkIn || !checkOut) {
-      alert("Please select check-in and check-out dates.");
+      setAlert({
+        variant: "warning",
+        title: "Missing dates",
+        lines: ["Please select check-in and check-out dates."],
+      });
       return;
     }
     try {
       await startCheckout.mutateAsync({
         room_id: room.id,
-        check_in: checkIn, // "YYYY-MM-DD"
-        check_out: checkOut, // "YYYY-MM-DD"
+        check_in: checkIn,
+        check_out: checkOut,
       });
-      // redirects to Stripe automatically inside the hook
+      // redirect happens inside the hook
     } catch (e) {
       console.error(e);
-      alert("Failed to start checkout. Please try again.");
+      setAlert({
+        variant: "danger",
+        title: "Checkout failed",
+        lines: ["Failed to start checkout. Please try again."],
+      });
     }
   };
 
@@ -76,6 +90,21 @@ export default function RoomDetailPage() {
 
   return (
     <div className="mx-auto max-w-6xl p-4">
+      {alert && (
+        <div className="mb-4">
+          <Alert
+            variant={alert.variant}
+            title={alert.title}
+            onClose={() => setAlert(null)}
+          >
+            <ul className="ml-5 list-disc">
+              {alert.lines.map((t, i) => (
+                <li key={i}>{t}</li>
+              ))}
+            </ul>
+          </Alert>
+        </div>
+      )}
       {/* 🏠 MAIN GRID */}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
         {/* LEFT COLUMN */}
@@ -141,7 +170,7 @@ export default function RoomDetailPage() {
                 <li>🏠 Type: {room.property_type.name}</li>
                 <li>🛏️ Bedrooms: {room.bedrooms}</li>
                 <li>🛁 Bathrooms: {room.bathrooms}</li>
-                <li>📏 Size: {room.size} m²</li>
+                <li>📏 Size: {room.size} sq ft</li>
                 <li>📅 Tenure: {room.tenure}</li>
               </ul>
             </div>
@@ -168,14 +197,13 @@ export default function RoomDetailPage() {
               {typeof room.coordinates === "string" ? (
                 (() => {
                   const [lat, lng] = room.coordinates.split(",").map(Number);
-                  return <MiniMap lat={lat} lng={lng} title={room.title} />;
+                  return <MiniMap lat={lat} lng={lng} title={room.title} price={""} />;
                 })()
               ) : (
                 <MiniMap
-                  lat={room.coordinates.lat}
-                  lng={room.coordinates.lng}
-                  title={room.title}
-                />
+                    lat={room.coordinates.lat}
+                    lng={room.coordinates.lng}
+                    title={room.title} price={""}                />
               )}
             </div>
           )}

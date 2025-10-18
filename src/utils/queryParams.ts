@@ -4,7 +4,7 @@ import type { Filters } from "@/types";
 export function buildRoomQuery(filters: Filters) {
   const params = new URLSearchParams();
 
-  if (filters.q) params.append("search", filters.q);
+  if (filters.q) params.append("address", filters.q);
   if (filters.priceMin !== undefined)
     params.append("min_price", String(filters.priceMin));
   if (filters.priceMax !== undefined)

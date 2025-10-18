@@ -2,24 +2,31 @@
 "use client";
 
 import "leaflet/dist/leaflet.css";
-import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
-import L from "leaflet";
+import dynamic from "next/dynamic";
+import { useEffect } from "react";
 
-// Next.js + Leaflet marker icon fix
-delete (L.Icon.Default as any).prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl:
-    "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-  iconUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-  shadowUrl: "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
-});
+// --- Dynamic imports for react-leaflet (client only) ---
+const MapContainer = dynamic(
+  () => import("react-leaflet").then((m) => m.MapContainer),
+  { ssr: false }
+) as any;
+const TileLayer = dynamic(
+  () => import("react-leaflet").then((m) => m.TileLayer),
+  { ssr: false }
+) as any;
+const Marker = dynamic(() => import("react-leaflet").then((m) => m.Marker), {
+  ssr: false,
+}) as any;
+const Popup = dynamic(() => import("react-leaflet").then((m) => m.Popup), {
+  ssr: false,
+}) as any;
 
 export default function MiniMap({
   lat,
   lng,
   title,
-  height = 220,
-  zoom = 14,
+  height = 420,  // ⬆️ taller default
+  zoom = 12,     // keep default zoom 12
 }: {
   lat: number;
   lng: number;
@@ -29,17 +36,38 @@ export default function MiniMap({
 }) {
   const center = [lat, lng] as [number, number];
 
+  useEffect(() => {
+    // Marker icon paths after hydration
+    (async () => {
+      const L = await import("leaflet");
+      const [icon, icon2x, shadow] = await Promise.all([
+        import("leaflet/dist/images/marker-icon.png"),
+        import("leaflet/dist/images/marker-icon-2x.png"),
+        import("leaflet/dist/images/marker-shadow.png"),
+      ]);
+      L.Icon.Default.mergeOptions({
+        iconUrl: (icon as any).default ?? icon,
+        iconRetinaUrl: (icon2x as any).default ?? icon2x,
+        shadowUrl: (shadow as any).default ?? shadow,
+      });
+    })();
+  }, []);
+
   return (
     <div className="mt-4 overflow-hidden rounded-xl border border-black/10">
       <div className="px-3 py-2 text-sm font-semibold">Location</div>
       <div style={{ height }}>
-        {/* center/zoom дээр тип маргаан үүсгэхээс сэргийлж any каст хийв */}
         <MapContainer
           {...({ center, zoom } as any)}
-          scrollWheelZoom={false}
-          zoomControl={false}
+          // 🔓 Unlock interactions
+          scrollWheelZoom={true}
+          dragging={true}
+          touchZoom={true}
+          doubleClickZoom={true}
+          zoomControl={true}
+          keyboard={true}
           style={{ height: "100%", width: "100%" }}
-          attributionControl={false}
+          attributionControl={true}
         >
           <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
           <Marker position={center as any}>

@@ -15,7 +15,7 @@ export default function PropertyCard({ p }: { p: RoomList }) {
     <div
       role="link"
       tabIndex={0}
-      aria-label={`Open ${p.title}`}
+      aria-label={`Open ${p.property_type?.name} at ${p.address} details`}
       onClick={open}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
@@ -26,9 +26,14 @@ export default function PropertyCard({ p }: { p: RoomList }) {
       className="card overflow-hidden cursor-pointer transition hover:-translate-y-0.5 hover:shadow-soft"
     >
       <div className="relative h-44 w-full">
-        <Image src={p?.thumbnail ?? "/default-image.jpg"} alt={p.title} fill className="object-cover" />
+        <Image
+          src={p?.thumbnail ?? "/default-image.jpg"}
+          alt={p.property_type?.name}
+          fill
+          className="object-cover"
+        />
         <div className="absolute left-2 top-2">
-          <span className="badge bg-white/90">{p.address}</span>
+          <span className="badge bg-white/90">{p.property_type?.name}</span>
         </div>
 
         {/* ❤️ add/remove */}
@@ -39,7 +44,7 @@ export default function PropertyCard({ p }: { p: RoomList }) {
 
       <div className="p-3">
         <div className="flex items-center justify-between">
-          <div className="font-bold line-clamp-1">{p.title}</div>
+          <div className="font-bold line-clamp-1">{p.address}</div>
           <div className="text-sm shrink-0">
             <strong>${p.price_per_month}</strong>/mo
           </div>

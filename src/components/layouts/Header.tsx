@@ -68,7 +68,7 @@ export default function Header() {
         <div className="flex min-w-0 items-center gap-2">
           <motion.button
             whileTap={{ scale: 0.95 }}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-xl border border-black/10 bg-white md:hidden"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-xl border border-black/10 bg-white md:hidden" // was h-9 w-9
             aria-label="Open menu"
             onClick={() => setMobileOpen((s) => !s)}
           >
@@ -79,10 +79,10 @@ export default function Header() {
             <Image
               src="/Logo.png"
               alt="Logo"
-              width={140}
-              height={40}
+              width={200} // was 140
+              height={60} // was 40
               priority
-              className="h-8 w-auto"
+              className="h-10 md:h-12 w-auto" // was h-8 w-auto
             />
           </Link>
         </div>
@@ -114,7 +114,7 @@ export default function Header() {
           ) : (
             <div className="flex items-center gap-2">
               <MotionAnchor href="/login" className="border bg-white">
-                Login
+                Sign in
               </MotionAnchor>
               <MotionAnchor
                 href="/register"
@@ -193,7 +193,7 @@ export default function Header() {
                       href="/login"
                       onClick={() => setMobileOpen(false)}
                     >
-                      Login
+                      Sign in
                     </MobileLink>
                   </StaggerItem>
                   <StaggerItem>

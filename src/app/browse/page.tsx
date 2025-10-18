@@ -13,28 +13,35 @@ export default function BrowsePage() {
   const filteredRooms = useMemo(() => {
     if (!rooms) return [];
 
+    const q = (filters.q ?? "").trim().toLowerCase();
+
     return rooms.filter((r) => {
-      if (filters.q && !r.title.toLowerCase().includes(filters.q.toLowerCase()))
-        return false;
+      // --- keyword search across multiple fields ---
+      if (q) {
+        const haystack = [r.title, r.address, r.property_type?.name]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase();
 
-      if (filters.type && r.property_type?.name !== filters.type)
-        return false;
+        if (!haystack.includes(q)) return false;
+      }
 
-      if (
-        filters.priceMin !== undefined &&
-        Number(r.price_per_month) < filters.priceMin
-      )
-        return false;
+      // --- price range ---
 
-      if (
-        filters.priceMax !== undefined &&
-        Number(r.price_per_month) > filters.priceMax
-      )
-        return false;
+      // --- pets allowed ---
+      if (filters.petsAllowed === true && !r.pets_allowed) return false;
 
-      if (filters.petsAllowed && !r.pets_allowed) return false;
+      // --- tenure (exact match if you store strings like 'try'|'mid'|'long') ---
+      if (filters.tenure && r.tenure !== filters.tenure) return false;
 
-      return true;
+      // --- type (match by name; change if you store an id/slug) ---
+      if (filters.type) {
+        const typeName = r.property_type?.name?.toLowerCase() ?? "";
+        if (!typeName.includes(String(filters.type).toLowerCase()))
+          return false;
+      }
+
+      return true; // ✅ keep the room
     });
   }, [rooms, filters]);
 
@@ -45,9 +52,7 @@ export default function BrowsePage() {
       </div>
 
       {isLoading ? (
-        <div className="text-center py-10 text-black/60">
-          Loading rooms...
-        </div>
+        <div className="text-center py-10 text-black/60">Loading rooms...</div>
       ) : filteredRooms.length === 0 ? (
         <div className="text-center py-10 text-black/60">
           No rooms match your filters.
@@ -60,7 +65,7 @@ export default function BrowsePage() {
           </div>
 
           {/* 🗺️ Right: interactive map */}
-          <div className="sticky top-24 h-[75vh]">
+          <div className="sticky top-24 h-[100vh]">
             <Map items={filteredRooms} />
           </div>
         </div>
