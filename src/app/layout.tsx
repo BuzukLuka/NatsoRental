@@ -6,7 +6,8 @@ import QueryProvider from "@/providers/QueryProvider";
 import { AuthProvider } from "@/providers/AuthProvider";
 import "leaflet/dist/leaflet.css";
 import { AppProvider } from "@/providers/AppProvider";
-import SupportButton from "@/components/Support"; // ✅ import your button
+import SupportButton from "@/components/Support";
+import Script from "next/script";
 
 export const metadata: Metadata = {
   title: "Natso Rental – Calgary Rooms",
@@ -20,6 +21,13 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
+      <head>
+        {/* Google Maps Places API */}
+        <Script
+          src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBI9IBi-KhTN4dI7zgiBvqZeReI9-6VXiA&libraries=places"
+          strategy="beforeInteractive"
+        />
+      </head>
       <body className="min-h-screen bg-white text-black relative">
         <QueryProvider>
           <AuthProvider>

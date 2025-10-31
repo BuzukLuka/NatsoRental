@@ -289,7 +289,8 @@ export default function ProfilePage() {
                   <div className="relative h-28 w-full overflow-hidden rounded-xl md:h-24 md:w-40">
                     <Image
                       src={current.room.thumbnail || "/placeholder.png"}
-                      alt={current.room.title}
+                      alt="Thumbnail"
+
                       fill
                       className="object-cover"
                     />

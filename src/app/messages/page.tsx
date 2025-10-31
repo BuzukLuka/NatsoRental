@@ -45,21 +45,34 @@ function NewChatModal({
   open,
   onClose,
   onStartSupport,
-  onStartWithUser, // optional future
+  onStartWithUser,
 }: {
   open: boolean;
   onClose: () => void;
   onStartSupport: () => Promise<void>;
   onStartWithUser?: (userId: number) => Promise<void>;
 }) {
-  // ⚠️ All hooks are called unconditionally to keep order stable
+  type Row = {
+    id: number;
+    name: string;
+    avatar?: string | null;
+    role?: string;
+    worker?: {
+      service_type?: string;
+      hourly_rate?: string | number | null;
+      rating?: number | null;
+      available?: boolean;
+    } | null;
+  };
+
   const [search, setSearch] = useState("");
-  const [results, setResults] = useState<
-    { id: number; name: string; avatar?: string | null }[]
-  >([]);
+  const [results, setResults] = useState<Row[]>([]);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [supportPending, setSupportPending] = useState(false);
+
+  // pagination
+  const nextUrlRef = useRef<string | null>(null);
 
   // Clear error whenever modal opens
   useEffect(() => {
@@ -69,37 +82,99 @@ function NewChatModal({
   // ESC to close + body scroll lock only while open
   useEffect(() => {
     if (!open) return;
-
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
     document.addEventListener("keydown", onKey);
-
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-
     return () => {
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = prevOverflow;
     };
   }, [open, onClose]);
 
-  async function doSearch(q: string) {
+  function mapRows(payload: any): Row[] {
+    const rows = Array.isArray(payload?.results) ? payload.results : [];
+    return rows.map((u: any) => ({
+      id: u.id,
+      name: u.name || u.username,
+      avatar: u.avatar ?? null,
+      role: u.role,
+      worker: u.worker || null,
+    }));
+  }
+
+  async function fetchWorkersFirstPage() {
     setLoading(true);
     setErr(null);
     try {
-      // Replace with your real endpoint if needed
-      const res = await api.get(`/users/search/`, { params: { q } });
-      setResults(res.data.results || []);
+      const res = await api.get(`/users/search/`, {
+        params: {
+          role: "worker",
+          available: 1,
+          verified: 1,
+          page_size: 20,
+        },
+      });
+      setResults(mapRows(res.data));
+      nextUrlRef.current = res.data?.next ?? null;
     } catch (e: any) {
       setResults([]);
-      setErr(e?.message ?? "Search failed");
+      setErr(
+        e?.response?.data?.detail || e?.message || "Failed to load workers"
+      );
     } finally {
       setLoading(false);
     }
   }
 
-  // Render nothing when closed (but hooks above still ran → order is stable)
+  async function fetchNextPage() {
+    if (!nextUrlRef.current) return;
+    setLoading(true);
+    setErr(null);
+    try {
+      // next contains absolute URL; use api with { url } or axios.get(nextUrlRef.current)
+      const res = await api.get(nextUrlRef.current);
+      setResults((prev) => [...prev, ...mapRows(res.data)]);
+      nextUrlRef.current = res.data?.next ?? null;
+    } catch (e: any) {
+      setErr(e?.response?.data?.detail || e?.message || "Failed to load more");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function doSearch(q: string) {
+    setLoading(true);
+    setErr(null);
+    try {
+      const res = await api.get(`/users/search/`, {
+        params: {
+          q,
+          role: "worker", // keep workers focus; remove if you want owners too
+          available: 1,
+          verified: 1,
+          page_size: 20,
+        },
+      });
+      setResults(mapRows(res.data));
+      nextUrlRef.current = res.data?.next ?? null;
+    } catch (e: any) {
+      setResults([]);
+      setErr(e?.response?.data?.detail || e?.message || "Search failed");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  // 👉 Load all (available, verified) workers when modal opens the first time
+  useEffect(() => {
+    if (!open) return;
+    // preload workers list (no search query)
+    fetchWorkersFirstPage();
+  }, [open]);
+
   if (!open) return null;
 
   return (
@@ -140,76 +215,102 @@ function NewChatModal({
             {supportPending ? "Starting…" : "Chat with Natso Rental Team"}
           </button>
 
-          {/* Optional people search */}
+          {/* Workers list + search */}
           <div>
             <label className="mb-1 block text-sm font-medium text-black/80">
-              Find a person (optional)
+              Service workers
             </label>
             <div className="flex gap-2">
               <div className="relative flex-1">
                 <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-black/40" />
                 <input
                   className="w-full rounded-xl border border-black/10 pl-8 pr-3 py-2 text-sm focus:ring-2 focus:ring-brand-yellow"
-                  placeholder="Search teammates, hosts, renters…"
+                  placeholder="Search handymen, plumbers, electricians…"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter" && search.trim()) {
-                      doSearch(search.trim());
+                    if (e.key === "Enter") {
+                      const q = search.trim();
+                      if (q) doSearch(q);
+                      else fetchWorkersFirstPage(); // empty search → back to full workers
                     }
                   }}
                 />
               </div>
               <button
                 className="rounded-xl border border-black/10 bg-white px-3 text-sm font-medium hover:shadow"
-                onClick={() => (search.trim() ? doSearch(search.trim()) : null)}
+                onClick={() => {
+                  const q = search.trim();
+                  if (q) doSearch(q);
+                  else fetchWorkersFirstPage();
+                }}
               >
                 Search
               </button>
             </div>
 
             <div className="mt-2 max-h-56 overflow-y-auto space-y-2">
-              {loading ? (
-                <div className="text-sm text-black/60">Searching…</div>
+              {loading && !results.length ? (
+                <div className="text-sm text-black/60">Loading…</div>
               ) : results.length ? (
-                results.map((u) => (
-                  <div
-                    key={u.id}
-                    className="flex items-center justify-between rounded-xl border border-black/10 p-2"
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <div className="relative h-8 w-8 overflow-hidden rounded-full border border-black/10">
-                        {u.avatar ? (
-                          <Image
-                            src={u.avatar}
-                            alt=""
-                            fill
-                            className="object-cover"
-                          />
-                        ) : (
-                          <div className="grid h-full w-full place-items-center bg-black text-white">
-                            <MessageSquare size={14} />
-                          </div>
-                        )}
+                <>
+                  {results.map((u) => (
+                    <div
+                      key={u.id}
+                      className="flex items-center justify-between rounded-xl border border-black/10 p-2"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div className="relative h-8 w-8 overflow-hidden rounded-full border border-black/10">
+                          {u.avatar ? (
+                            <Image
+                              src={u.avatar}
+                              alt=""
+                              fill
+                              className="object-cover"
+                            />
+                          ) : (
+                            <div className="grid h-full w-full place-items-center bg-black text-white">
+                              <MessageSquare size={14} />
+                            </div>
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="truncate text-sm">{u.name}</div>
+                          {u.role === "worker" && u.worker?.service_type && (
+                            <div className="truncate text-xs text-black/60">
+                              {u.worker.service_type}
+                              {typeof u.worker.rating === "number"
+                                ? ` • ★ ${u.worker.rating.toFixed(1)}`
+                                : ""}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                      <div className="truncate text-sm">{u.name}</div>
+                      {onStartWithUser && (
+                        <button
+                          className="btn btn-outline btn-sm"
+                          onClick={() => onStartWithUser(u.id)}
+                        >
+                          Start
+                        </button>
+                      )}
                     </div>
-                    {onStartWithUser && (
+                  ))}
+                  {/* Load more if pagination available */}
+                  {nextUrlRef.current && (
+                    <div className="pt-1">
                       <button
-                        className="btn btn-outline btn-sm"
-                        onClick={() => onStartWithUser(u.id)}
+                        disabled={loading}
+                        onClick={fetchNextPage}
+                        className="w-full rounded-xl border border-black/10 bg-white px-3 py-2 text-sm hover:shadow disabled:opacity-60"
                       >
-                        Start
+                        {loading ? "Loading…" : "Load more"}
                       </button>
-                    )}
-                  </div>
-                ))
-              ) : search ? (
-                <div className="text-sm text-black/60">No matches.</div>
+                    </div>
+                  )}
+                </>
               ) : (
-                <div className="text-xs text-black/50">
-                  Tip: You can skip this and just talk to Support.
-                </div>
+                <div className="text-sm text-black/60">No workers found.</div>
               )}
             </div>
 
@@ -513,10 +614,24 @@ export default function MessagesPage() {
             // TODO: toast error
           }
         }}
-        onStartWithUser={async (_userId) => {
-          // TODO: implement POST to your endpoint for direct chat with user
-          // const res = await api.post("/chat/conversations/start-with-user/", { user_id: _userId });
-          // setNewOpen(false); setActiveId(res.data.id); markRead.mutate(res.data.id);
+        onStartWithUser={async (userId) => {
+          try {
+            const res = await api.post("/chat/conversations/start-with-user/", {
+              user_id: userId,
+            });
+            const conv = res.data;
+            if (conv?.id) {
+              setActiveId(conv.id);
+              // If your useConversations hook supports refetch, call it so the sidebar shows the new convo
+              // @ts-ignore (depending how your hook is typed)
+              typeof (useConversations as any)?.refetch === "function" &&
+                (useConversations as any).refetch();
+              markRead.mutate(conv.id);
+              setNewOpen(false);
+            }
+          } catch (e) {
+            // TODO: toast error
+          }
         }}
       />
     </main>
