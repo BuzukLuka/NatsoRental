@@ -107,6 +107,7 @@ export type CreateBookingInput = {
   room_id: number;
   check_in: string; // "YYYY-MM-DD"
   check_out: string; // "YYYY-MM-DD"
+  plan: "monthly" | "full";
 };
 
 /* ---------- PAYMENTS ---------- */

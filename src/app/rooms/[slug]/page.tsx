@@ -1,47 +1,60 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import Image from "next/image";
 import useEmblaCarousel from "embla-carousel-react";
 import Autoplay from "embla-carousel-autoplay";
 import { useRoom } from "@/hooks/useRooms";
 import Badge from "@/components/ui/Badge";
 import MiniMap from "@/components/MiniMap";
-import { useCallback, useState } from "react";
-import { useStartCheckout } from "@/hooks/useBookings"; // 👈 add this
+import { useCallback, useMemo, useState } from "react";
+import { useStartCheckout } from "@/hooks/useBookings"; // ⬅️ monthly/full aware
 import ApplyDrawer from "@/components/ApplyDrawer";
-import { MessageCircle } from "lucide-react";
-import { useStartChatWithRoom } from "@/hooks/useMessagingExtras";
-import { useAuth } from "@/providers/AuthProvider";
-import SupportButton from "@/components/Support";
 import Alert from "@/components/ui/Alert";
 
+type AlertVariant = "warning" | "info" | "success" | "danger";
+type PayPlan = "monthly" | "full";
+
 export default function RoomDetailPage() {
-  type AlertVariant = "warning" | "info" | "success" | "danger";
   const [alert, setAlert] = useState<{
     variant: AlertVariant;
     title: string;
     lines: string[];
   } | null>(null);
+
   const { slug } = useParams<{ slug: string }>();
   const [applyOpen, setApplyOpen] = useState(false);
   const { data: room, isLoading, error } = useRoom(slug);
-  const { isAuthenticated } = useAuth();
-  const startWithRoom = useStartChatWithRoom();
 
-  // ✅ Embla carousel setup
+  // embla carousel
   const [emblaRef, emblaApi] = useEmblaCarousel({ loop: true }, [
     Autoplay({ delay: 3500 }),
   ]);
   const scrollPrev = useCallback(() => emblaApi?.scrollPrev(), [emblaApi]);
   const scrollNext = useCallback(() => emblaApi?.scrollNext(), [emblaApi]);
 
-  // ✅ Local state for dates
+  // dates + plan
   const [checkIn, setCheckIn] = useState("");
   const [checkOut, setCheckOut] = useState("");
+  const [plan, setPlan] = useState<PayPlan>("monthly");
 
-  // ✅ Checkout mutation (booking -> stripe session -> redirect)
+  // Stripe Checkout mutation
   const startCheckout = useStartCheckout();
+
+  const nights = useMemo(() => {
+    if (!checkIn || !checkOut) return 0;
+    const a = new Date(checkIn);
+    const b = new Date(checkOut);
+    const ms = b.getTime() - a.getTime();
+    return Math.max(0, Math.ceil(ms / (1000 * 60 * 60 * 24)));
+  }, [checkIn, checkOut]);
+
+  const estimateFull = useMemo(() => {
+    if (!room || !nights) return null;
+    // very rough estimate (monthly price prorated by 30 days)
+    const est = Math.ceil((Number(room.price_per_month) / 30) * nights);
+    return est;
+  }, [room, nights]);
 
   const handleReserve = async () => {
     if (!room) return;
@@ -58,8 +71,9 @@ export default function RoomDetailPage() {
         room_id: room.id,
         check_in: checkIn,
         check_out: checkOut,
+        plan, // ⬅️ monthly | full
       });
-      // redirect happens inside the hook
+      // redirect happens inside hook if `url` is returned
     } catch (e) {
       console.error(e);
       setAlert({
@@ -70,21 +84,16 @@ export default function RoomDetailPage() {
     }
   };
 
-  if (isLoading)
-    return (
-      <div className="p-6 text-gray-500 animate-pulse">
-        Loading room details...
-      </div>
-    );
-  if (error)
+  if (isLoading) {
+    return <div className="p-6 text-gray-500 animate-pulse">Loading room details...</div>;
+  }
+  if (error) {
     return <div className="p-6 text-red-600">Failed to load room details.</div>;
+  }
   if (!room) return <div className="p-6">Not found.</div>;
 
-  // 🖼️ Combine thumbnail + other images
   const allImages = [
-    ...(room.thumbnail
-      ? [{ id: 0, image: room.thumbnail, alt_text: room.title }]
-      : []),
+    ...(room.thumbnail ? [{ id: 0, image: room.thumbnail, alt_text: room.title }] : []),
     ...(room.images || []),
   ];
 
@@ -92,11 +101,7 @@ export default function RoomDetailPage() {
     <div className="mx-auto max-w-6xl p-4">
       {alert && (
         <div className="mb-4">
-          <Alert
-            variant={alert.variant}
-            title={alert.title}
-            onClose={() => setAlert(null)}
-          >
+          <Alert variant={alert.variant} title={alert.title} onClose={() => setAlert(null)}>
             <ul className="ml-5 list-disc">
               {alert.lines.map((t, i) => (
                 <li key={i}>{t}</li>
@@ -105,19 +110,17 @@ export default function RoomDetailPage() {
           </Alert>
         </div>
       )}
-      {/* 🏠 MAIN GRID */}
+
+      {/* MAIN GRID */}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
-        {/* LEFT COLUMN */}
+        {/* LEFT */}
         <div className="md:col-span-2">
-          {/* 🖼️ Full Carousel */}
+          {/* Carousel */}
           <div className="relative">
             <div className="overflow-hidden rounded-2xl" ref={emblaRef}>
               <div className="flex">
                 {allImages.map((img) => (
-                  <div
-                    key={img.id}
-                    className="relative flex-[0_0_100%] h-[400px]"
-                  >
+                  <div key={img.id} className="relative h-[400px] flex-[0_0_100%]">
                     <Image
                       src={img.image}
                       alt={img.alt_text || room.title}
@@ -129,8 +132,6 @@ export default function RoomDetailPage() {
                 ))}
               </div>
             </div>
-
-            {/* Left/Right Controls */}
             <button
               onClick={scrollPrev}
               className="absolute left-3 top-1/2 -translate-y-1/2 rounded-full bg-black/40 px-2 py-1 text-2xl text-white hover:bg-black/60"
@@ -145,7 +146,7 @@ export default function RoomDetailPage() {
             </button>
           </div>
 
-          {/* TITLE + META */}
+          {/* Title + Meta */}
           <h1 className="mt-4 text-2xl font-extrabold">{room.title}</h1>
           <p className="mt-1 text-black/70">{room.address}</p>
 
@@ -158,11 +159,9 @@ export default function RoomDetailPage() {
             <Badge>⭐ {room.average_rating?.toFixed(1)} rating</Badge>
           </div>
 
-          <p className="mt-4 text-black/80 leading-relaxed">
-            {room.description}
-          </p>
+          <p className="mt-4 leading-relaxed text-black/80">{room.description}</p>
 
-          {/* INFO CARDS */}
+          {/* Info Cards */}
           <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="card p-4">
               <h3 className="font-bold">Property Details</h3>
@@ -183,14 +182,13 @@ export default function RoomDetailPage() {
                 <li>🛋️ Furnished: {room.furnished ? "Yes" : "No"}</li>
                 <li>🚗 Parking: {room.parking ? "Available" : "No"}</li>
                 <li>
-                  🕒 Last Updated:{" "}
-                  {new Date(room.updated_at).toLocaleDateString()}
+                  🕒 Last Updated: {new Date(room.updated_at).toLocaleDateString()}
                 </li>
               </ul>
             </div>
           </div>
 
-          {/* 🗺️ Mini Map */}
+          {/* Map */}
           {room.coordinates && (
             <div className="mt-6">
               <h3 className="mb-2 text-lg font-bold">Location</h3>
@@ -200,38 +198,61 @@ export default function RoomDetailPage() {
                   return <MiniMap lat={lat} lng={lng} title={room.title} />;
                 })()
               ) : (
-                <MiniMap
-                  lat={room.coordinates.lat}
-                  lng={room.coordinates.lng}
-                  title={room.title}
-                />
+                <MiniMap lat={room.coordinates.lat} lng={room.coordinates.lng} title={room.title} />
               )}
             </div>
           )}
         </div>
 
-        {/* RIGHT SIDEBAR */}
+        {/* RIGHT */}
         <aside>
           <div className="card sticky top-24 p-4">
             <div className="flex items-center justify-between">
               <div>
                 <div className="text-2xl font-extrabold">
                   ${room.price_per_month}
-                  <span className="text-sm font-normal text-black/60">
-                    {" "}
-                    /month
-                  </span>
+                  <span className="text-sm font-normal text-black/60"> /month</span>
                 </div>
-                <div className="text-sm text-black/60">
-                  Location: {room.address}
-                </div>
+                <div className="text-sm text-black/60">Location: {room.address}</div>
               </div>
-              <div className="badge bg-yellow-200 text-black">
-                {room.property_type.name}
-              </div>
+              <div className="badge bg-yellow-200 text-black">{room.property_type.name}</div>
             </div>
 
-            {/* Simple date pickers */}
+            {/* Payment plan selector */}
+            <div className="mt-4">
+              <label className="block text-sm font-semibold text-black/80">Payment plan</label>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setPlan("monthly")}
+                  className={`rounded-xl border px-3 py-2 text-sm ${
+                    plan === "monthly"
+                      ? "border-black bg-black text-white"
+                      : "border-black/10 bg-white hover:shadow"
+                  }`}
+                >
+                  Pay monthly
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPlan("full")}
+                  className={`rounded-xl border px-3 py-2 text-sm ${
+                    plan === "full"
+                      ? "border-black bg-black text-white"
+                      : "border-black/10 bg-white hover:shadow"
+                  }`}
+                >
+                  Pay in full
+                </button>
+              </div>
+              <p className="mt-2 text-xs text-black/60">
+                {plan === "monthly"
+                  ? "First month due now. Future months billed automatically."
+                  : "Full stay charged once at checkout."}
+              </p>
+            </div>
+
+            {/* Dates */}
             <div className="mt-4 grid grid-cols-2 gap-2">
               <div>
                 <label className="text-xs text-black/60">Check-in</label>
@@ -253,7 +274,16 @@ export default function RoomDetailPage() {
               </div>
             </div>
 
-            {/* Actions */}
+            {/* Optional summary */}
+            <div className="mt-3 text-xs text-black/60">
+              {plan === "monthly"
+                ? `Monthly price: $${room.price_per_month}`
+                : estimateFull
+                ? `Estimated total (prorated): $${estimateFull}`
+                : `Full payment calculated at checkout`}
+            </div>
+
+            {/* Action */}
             <button
               className="btn btn-primary mt-3 w-full"
               onClick={handleReserve}
@@ -261,13 +291,12 @@ export default function RoomDetailPage() {
             >
               {startCheckout.isPending
                 ? "Redirecting to Stripe..."
-                : "Reserve with Deposit"}
+                : plan === "monthly"
+                ? "Start monthly plan"
+                : "Pay in full"}
             </button>
 
-            <button
-              className="btn btn-outline mt-2 w-full"
-              onClick={() => setApplyOpen(true)}
-            >
+            <button className="btn btn-outline mt-2 w-full" onClick={() => setApplyOpen(true)}>
               Apply / Screening
             </button>
 
@@ -283,14 +312,12 @@ export default function RoomDetailPage() {
         </aside>
       </div>
 
-      {/* EXTRA SECTIONS */}
+      {/* Extras */}
       <div className="mt-10 grid grid-cols-1 gap-4 md:grid-cols-3">
         <div className="card p-4">
           <h3 className="font-bold">Average Rating</h3>
           <p className="mt-2 text-sm text-black/80">
-            {room.average_rating
-              ? `${room.average_rating}/5`
-              : "No ratings yet"}
+            {room.average_rating ? `${room.average_rating}/5` : "No ratings yet"}
           </p>
         </div>
 
@@ -299,6 +326,7 @@ export default function RoomDetailPage() {
           <p className="mt-2 text-sm text-black/80">Available now ✅</p>
         </div>
       </div>
+
       <ApplyDrawer
         open={applyOpen}
         onClose={() => setApplyOpen(false)}
