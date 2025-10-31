@@ -6,7 +6,7 @@ import QueryProvider from "@/providers/QueryProvider";
 import { AuthProvider } from "@/providers/AuthProvider";
 import "leaflet/dist/leaflet.css";
 import { AppProvider } from "@/providers/AppProvider";
-import SupportButton from "@/components/Support";
+import SupportButton from "@/components/Support"; // ✅ import your button
 import Script from "next/script";
 
 export const metadata: Metadata = {
@@ -24,7 +24,7 @@ export default function RootLayout({
       <head>
         {/* Google Maps Places API */}
         <Script
-          src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBI9IBi-KhTN4dI7zgiBvqZeReI9-6VXiA&libraries=places"
+          src={`https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&libraries=places`}
           strategy="beforeInteractive"
         />
       </head>
