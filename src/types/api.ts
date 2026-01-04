@@ -14,6 +14,7 @@ export interface RoomList {
   thumbnail?: string | null;
   average_rating: number;
   is_featured: boolean;
+  is_taken?: boolean;
   property_type: PropertyType;
   coordinates: string; // эсвэл {lat:number; lng:number} | string — backend-тэйгээ тааруул
   address?: string;
@@ -47,6 +48,7 @@ export interface RoomDetail {
   coordinates: { lat: number; lng: number } | string;
   is_active: boolean;
   is_featured: boolean;
+  is_taken?: boolean;
   thumbnail?: string | null;
   property_type: PropertyType;
   images: RoomImage[];

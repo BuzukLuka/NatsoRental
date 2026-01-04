@@ -99,47 +99,56 @@ export default function ApplyDrawer({
 
       {/* Panel */}
       <div
-        className={`absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-2xl transition-transform duration-300 ${
+        className={`absolute right-0 top-0 h-full w-full max-w-md bg-white shadow-2xl transition-transform duration-300 overflow-y-auto ${
           open ? "translate-x-0" : "translate-x-full"
         }`}
         role="dialog"
         aria-modal="true"
       >
-        <div className="flex items-center justify-between border-b p-4">
-          <div>
-            <h3 className="text-lg font-bold">Apply / Screening</h3>
-            <p className="text-sm text-black/60">Room: {roomTitle}</p>
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b bg-white p-4">
+          <div className="flex-1 min-w-0 pr-2">
+            <h3 className="text-lg font-bold truncate">Apply / Screening</h3>
+            <p className="text-sm text-black/60 truncate">Room: {roomTitle}</p>
           </div>
-          <button className="btn btn-sm btn-outline" onClick={onClose}>
+          <button className="btn btn-sm btn-outline shrink-0" onClick={onClose}>
             Close
           </button>
         </div>
 
-        <form className="space-y-3 p-4" onSubmit={submit}>
+        <form className="space-y-4 p-4 pb-6" onSubmit={submit}>
           <div>
-            <label className="text-xs text-black/60">Full name*</label>
+            <label className="block text-xs font-medium text-black/70 mb-1">
+              Full name*
+            </label>
             <input
-              className="input input-bordered w-full"
+              className="input input-bordered w-full text-sm"
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               required
+              placeholder="Enter your full name"
             />
           </div>
 
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="text-xs text-black/60">Phone</label>
+              <label className="block text-xs font-medium text-black/70 mb-1">
+                Phone
+              </label>
               <input
-                className="input input-bordered w-full"
+                className="input input-bordered w-full text-sm"
+                type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
+                placeholder="(555) 123-4567"
               />
             </div>
             <div>
-              <label className="text-xs text-black/60">Move-in date</label>
+              <label className="block text-xs font-medium text-black/70 mb-1">
+                Move-in date
+              </label>
               <input
                 type="date"
-                className="input input-bordered w-full"
+                className="input input-bordered w-full text-sm"
                 value={moveIn}
                 onChange={(e) => setMoveIn(e.target.value)}
               />
@@ -147,11 +156,11 @@ export default function ApplyDrawer({
           </div>
 
           <div>
-            <label className="text-xs text-black/60">
+            <label className="block text-xs font-medium text-black/70 mb-1">
               Employer / Workplace
             </label>
             <input
-              className="input input-bordered w-full"
+              className="input input-bordered w-full text-sm"
               value={employer}
               onChange={(e) => setEmployer(e.target.value)}
               placeholder="ACME Inc. (or 'Self-employed', 'Student')"
@@ -159,11 +168,11 @@ export default function ApplyDrawer({
           </div>
 
           <div>
-            <label className="text-xs text-black/60">
-              Monthly income (USD)
+            <label className="block text-xs font-medium text-black/70 mb-1">
+              Monthly income (CAD)
             </label>
             <input
-              className="input input-bordered w-full"
+              className="input input-bordered w-full text-sm"
               value={income}
               onChange={(e) => setIncome(e.target.value)}
               inputMode="decimal"
@@ -171,23 +180,25 @@ export default function ApplyDrawer({
             />
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 py-1">
             <input
               id="hasPets"
               type="checkbox"
-              className="checkbox"
+              className="checkbox checkbox-sm"
               checked={hasPets}
               onChange={(e) => setHasPets(e.target.checked)}
             />
-            <label htmlFor="hasPets" className="text-sm">
+            <label htmlFor="hasPets" className="text-sm cursor-pointer">
               I have pets
             </label>
           </div>
 
           <div>
-            <label className="text-xs text-black/60">Notes</label>
+            <label className="block text-xs font-medium text-black/70 mb-1">
+              Additional Notes
+            </label>
             <textarea
-              className="textarea textarea-bordered w-full"
+              className="textarea textarea-bordered w-full text-sm resize-none"
               rows={4}
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
@@ -195,39 +206,48 @@ export default function ApplyDrawer({
             />
           </div>
 
-          <button
-            type="submit"
-            className="btn btn-primary w-full"
-            disabled={submitting}
-          >
-            {submitting ? "Submitting…" : "Submit Application"}
-          </button>
+          <div className="pt-2 space-y-3">
+            <button
+              type="submit"
+              className="btn btn-primary w-full"
+              disabled={submitting}
+            >
+              {submitting ? (
+                <span className="flex items-center gap-2">
+                  <span className="loading loading-spinner loading-sm"></span>
+                  Submitting…
+                </span>
+              ) : (
+                "Submit Application"
+              )}
+            </button>
 
-          <p className="text-xs text-black/50">
-            By submitting, you consent to the host reviewing your application
-            and contacting references you provide.
-          </p>
+            <p className="text-xs text-black/50 leading-relaxed">
+              By submitting, you consent to the host reviewing your application
+              and contacting references you provide.
+            </p>
+          </div>
         </form>
       </div>
 
-      {/* Toast (floating, bottom-right) */}
+      {/* Toast (floating, responsive positioning) */}
       {toast && (
-        <div className="pointer-events-none fixed bottom-6 right-6 z-[2100] space-y-2">
+        <div className="pointer-events-none fixed bottom-4 left-4 right-4 sm:bottom-6 sm:left-auto sm:right-6 z-[2100]">
           <div
-            className={`pointer-events-auto max-w-sm rounded-xl border p-3 shadow-lg ${
+            className={`pointer-events-auto w-full sm:max-w-sm rounded-xl border p-4 shadow-lg ${
               toast.type === "success"
                 ? "border-green-200 bg-green-50 text-green-800"
                 : "border-red-200 bg-red-50 text-red-800"
             }`}
           >
-            <div className="flex items-start gap-2">
-              <div className="grid h-6 w-6 place-items-center rounded-full bg-black/10">
+            <div className="flex items-start gap-3">
+              <div className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-black/10 text-base">
                 {toast.type === "success" ? "✅" : "⚠️"}
               </div>
-              <div className="flex-1 text-sm">{toast.msg}</div>
+              <div className="flex-1 text-sm leading-relaxed">{toast.msg}</div>
               <button
                 onClick={() => setToast(null)}
-                className="ml-2 text-black/50 hover:text-black"
+                className="shrink-0 text-lg leading-none text-black/50 hover:text-black transition-colors"
                 aria-label="Dismiss"
               >
                 ✕

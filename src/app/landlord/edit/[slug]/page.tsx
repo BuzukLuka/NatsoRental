@@ -1,23 +1,26 @@
 "use client";
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { useAuth } from "@/providers/AuthProvider";
-import { useCreateRoom, usePropertyTypes } from "@/hooks/useRooms";
+import { useRoom, useUpdateRoom, usePropertyTypes } from "@/hooks/useRooms";
 import Alert from "@/components/ui/Alert";
-import { Heart, MapPin, Home } from "lucide-react";
+import { Heart, MapPin } from "lucide-react";
 import MapPicker from "@/components/MapPicker";
 import AddressAutocomplete from "@/components/AddressAutocomplete";
-import "../styles.css";
+import "../../styles.css";
 
-export default function NewListingPage() {
+export default function EditListingPage() {
+  const params = useParams();
   const router = useRouter();
+  const slug = params.slug as string;
+
   const { user } = useAuth();
+  const { data: room, isLoading: loadingRoom } = useRoom(slug);
   const { data: propertyTypes, isLoading: loadingTypes } = usePropertyTypes();
-  const createRoom = useCreateRoom();
+  const updateRoom = useUpdateRoom();
 
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-  const [images, setImages] = useState<File[]>([]);
   const [thumbnail, setThumbnail] = useState<File | null>(null);
   const [address, setAddress] = useState("");
   const [latitude, setLatitude] = useState<number>(51.0447);
@@ -38,40 +41,51 @@ export default function NewListingPage() {
     heating: "",
   });
 
-  const isVerified = user?.verified;
+  // Initialize form data from room
+  useEffect(() => {
+    if (room) {
+      // Extract coordinates
+      const coordinates = typeof room.coordinates === 'string'
+        ? JSON.parse(room.coordinates)
+        : room.coordinates;
+
+      setAddress(room.address || "");
+      setLatitude(coordinates?.lat || 51.0447);
+      setLongitude(coordinates?.lng || -114.0719);
+
+      // Update preview
+      setPreview({
+        propertyType: room.property_type?.name || "Select Property Type",
+        price: room.price_per_month || 0,
+        address: room.address || "No address set",
+        bedrooms: room.bedrooms?.toString() || "",
+        bathrooms: room.bathrooms?.toString() || "",
+        size: room.size || "",
+        petsAllowed: room.pets_allowed || false,
+        parking: room.parking_type || "",
+        laundry: room.laundry_type || "",
+        ac: room.air_conditioning || "",
+        heating: room.heating_type || "",
+      });
+    }
+  }, [room]);
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");
     setSuccess("");
 
-    if (!isVerified) {
-      setError("You must complete identity verification before creating listings.");
-      return;
-    }
-
     const formData = new FormData(e.currentTarget);
 
-    // Add images
-    images.forEach((img) => {
-      formData.append("images", img);
-    });
-
-    // Latitude and longitude are already in formData from the hidden inputs
+    // Latitude and longitude are already in formData from the inputs
     // Backend will convert them to a PostGIS Point
 
     try {
-      await createRoom.mutateAsync(formData);
-      setSuccess("Listing created successfully!");
+      await updateRoom.mutateAsync({ slug, formData });
+      setSuccess("Listing updated successfully!");
       setTimeout(() => router.push("/landlord"), 1500);
     } catch (err: any) {
-      setError(err?.response?.data?.detail || "Failed to create listing.");
-    }
-  }
-
-  function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
-    if (e.target.files) {
-      setImages(Array.from(e.target.files));
+      setError(err?.response?.data?.detail || "Failed to update listing.");
     }
   }
 
@@ -87,14 +101,30 @@ export default function NewListingPage() {
 
   const heroUrl = thumbnail
     ? URL.createObjectURL(thumbnail)
-    : images[0]
-    ? URL.createObjectURL(images[0])
-    : null;
+    : room?.thumbnail || null;
 
   if (!user) {
     return (
       <div className="mx-auto max-w-2xl p-4">
-        <Alert type="error">Please login to create a listing.</Alert>
+        <Alert type="error">Please login to edit listings.</Alert>
+      </div>
+    );
+  }
+
+  if (loadingRoom) {
+    return (
+      <div className="marketplace-bg">
+        <div className="marketplace-container">
+          <p className="text-gray-500">Loading listing...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!room) {
+    return (
+      <div className="mx-auto max-w-2xl p-4">
+        <Alert type="error">Listing not found.</Alert>
       </div>
     );
   }
@@ -104,17 +134,6 @@ export default function NewListingPage() {
       <div className="marketplace-container">
         {/* LEFT SIDE - FORM */}
         <div className="form-side">
-          {!isVerified && (
-            <div className="section-card">
-              <div className="section-body">
-                <Alert type="warning">
-                  Your identity is not yet verified. Complete verification to create listings.
-                  <a href="/profile?tab=identity" className="underline ml-2">Verify Now</a>
-                </Alert>
-              </div>
-            </div>
-          )}
-
           {error && (
             <div className="section-card">
               <div className="section-body">
@@ -144,6 +163,7 @@ export default function NewListingPage() {
                       name="property_type"
                       required
                       disabled={loadingTypes}
+                      defaultValue={room.property_type?.id}
                       onChange={(e) => {
                         const text = e.target.options[e.target.selectedIndex].text;
                         updatePreview("propertyType", text);
@@ -167,6 +187,7 @@ export default function NewListingPage() {
                       rows={5}
                       className="form-textarea"
                       placeholder="Describe your property..."
+                      defaultValue={room.description || ""}
                     />
                   </div>
                 </div>
@@ -177,9 +198,9 @@ export default function NewListingPage() {
             <div className="section-card">
               <div className="section-header">📷 Photos</div>
               <div className="section-body">
-                <div className="field-row cols-2">
+                <div className="field-row">
                   <div className="field-group">
-                    <label htmlFor="thumbnail">Cover Photo</label>
+                    <label htmlFor="thumbnail">Update Cover Photo</label>
                     <input
                       type="file"
                       id="thumbnail"
@@ -188,38 +209,20 @@ export default function NewListingPage() {
                       onChange={handleThumbnailChange}
                       className="form-file"
                     />
-                    <div className="helptext">Main photo for your listing</div>
-                  </div>
-                  <div className="field-group">
-                    <label htmlFor="images">Additional Photos</label>
-                    <input
-                      type="file"
-                      id="images"
-                      multiple
-                      accept="image/*"
-                      onChange={handleImageChange}
-                      className="form-file"
-                    />
-                    <div className="helptext">Select multiple images</div>
+                    {room.thumbnail && !thumbnail && (
+                      <div className="helptext">Current: {room.thumbnail.split('/').pop()}</div>
+                    )}
                   </div>
                 </div>
 
-                <div className="photo-grid">
-                  {thumbnail && (
+                {heroUrl && (
+                  <div className="photo-grid">
                     <div className="photo-slot">
-                      <img src={URL.createObjectURL(thumbnail)} alt="Cover" />
+                      <img src={heroUrl} alt="Cover" />
                       <div className="badge">Cover</div>
                     </div>
-                  )}
-                  {images.map((img, idx) => (
-                    <div key={idx} className="photo-slot">
-                      <img src={URL.createObjectURL(img)} alt={`Photo ${idx + 1}`} />
-                    </div>
-                  ))}
-                  {Array.from({ length: Math.max(0, 6 - (thumbnail ? 1 : 0) - images.length) }).map((_, idx) => (
-                    <div key={`empty-${idx}`} className="photo-slot"></div>
-                  ))}
-                </div>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -316,6 +319,7 @@ export default function NewListingPage() {
                       step="0.01"
                       min="0"
                       required
+                      defaultValue={room.price_per_month}
                       className="form-input"
                       onChange={(e) => updatePreview("price", parseFloat(e.target.value) || 0)}
                     />
@@ -328,6 +332,7 @@ export default function NewListingPage() {
                       name="bedrooms"
                       min="0"
                       required
+                      defaultValue={room.bedrooms}
                       className="form-input"
                       onChange={(e) => updatePreview("bedrooms", e.target.value)}
                     />
@@ -340,6 +345,7 @@ export default function NewListingPage() {
                       name="bathrooms"
                       min="0"
                       required
+                      defaultValue={room.bathrooms}
                       className="form-input"
                       onChange={(e) => updatePreview("bathrooms", e.target.value)}
                     />
@@ -351,6 +357,7 @@ export default function NewListingPage() {
                       id="size"
                       name="size"
                       className="form-input"
+                      defaultValue={room.size || ""}
                       onChange={(e) => updatePreview("size", e.target.value)}
                     />
                   </div>
@@ -363,6 +370,7 @@ export default function NewListingPage() {
                       id="parking_type"
                       name="parking_type"
                       className="form-input"
+                      defaultValue={room.parking_type || ""}
                       onChange={(e) => updatePreview("parking", e.target.options[e.target.selectedIndex].text)}
                     >
                       <option value="">Select type</option>
@@ -377,6 +385,7 @@ export default function NewListingPage() {
                       <input
                         type="checkbox"
                         name="pets_allowed"
+                        defaultChecked={room.pets_allowed}
                         onChange={(e) => updatePreview("petsAllowed", e.target.checked)}
                       />
                       Pets Allowed
@@ -397,6 +406,7 @@ export default function NewListingPage() {
                       id="laundry_type"
                       name="laundry_type"
                       className="form-input"
+                      defaultValue={room.laundry_type || ""}
                       onChange={(e) => updatePreview("laundry", e.target.options[e.target.selectedIndex].text)}
                     >
                       <option value="">Select type</option>
@@ -411,6 +421,7 @@ export default function NewListingPage() {
                       id="air_conditioning"
                       name="air_conditioning"
                       className="form-input"
+                      defaultValue={room.air_conditioning || ""}
                       onChange={(e) => updatePreview("ac", e.target.options[e.target.selectedIndex].text)}
                     >
                       <option value="">Select type</option>
@@ -428,6 +439,7 @@ export default function NewListingPage() {
                       id="heating_type"
                       name="heating_type"
                       className="form-input"
+                      defaultValue={room.heating_type || ""}
                       onChange={(e) => updatePreview("heating", e.target.options[e.target.selectedIndex].text)}
                     >
                       <option value="">Select type</option>
@@ -444,9 +456,28 @@ export default function NewListingPage() {
                       id="duration"
                       name="duration"
                       min="1"
-                      defaultValue="6"
+                      defaultValue={room.duration || 6}
                       className="form-input"
                     />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* STATUS */}
+            <div className="section-card">
+              <div className="section-header">⚙️ Status</div>
+              <div className="section-body">
+                <div className="field-row">
+                  <div className="field-group">
+                    <label className="checkbox-label">
+                      <input
+                        type="checkbox"
+                        name="is_active"
+                        defaultChecked={room.is_active}
+                      />
+                      Active (visible to renters)
+                    </label>
                   </div>
                 </div>
               </div>
@@ -456,14 +487,14 @@ export default function NewListingPage() {
             <div className="submit-row">
               <button
                 type="submit"
-                disabled={createRoom.isPending || !isVerified}
+                disabled={updateRoom.isPending}
                 className="btn-submit"
               >
-                {createRoom.isPending ? "Creating..." : "💾 Create Listing"}
+                {updateRoom.isPending ? "Updating..." : "💾 Update Listing"}
               </button>
               <button
                 type="button"
-                onClick={() => router.back()}
+                onClick={() => router.push("/landlord")}
                 className="btn-cancel"
               >
                 Cancel
@@ -489,7 +520,7 @@ export default function NewListingPage() {
                   <div className="heart-icon">
                     <Heart size={22} />
                   </div>
-                  <span>No photos uploaded</span>
+                  <span>No photo uploaded</span>
                 </>
               )}
             </div>

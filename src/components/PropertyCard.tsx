@@ -32,8 +32,15 @@ export default function PropertyCard({ p }: { p: RoomList }) {
           fill
           className="object-cover"
         />
-        <div className="absolute left-2 top-2">
+        <div className="absolute left-2 top-2 flex flex-col gap-1">
           <span className="badge bg-white/90">{p.property_type?.name}</span>
+          {p.is_taken ? (
+            <span className="badge badge-warning text-xs">Booked</span>
+          ) : (
+            <span className="badge bg-green-100 text-green-800 text-xs border-green-200">
+              Available now ✅
+            </span>
+          )}
         </div>
 
         {/* ❤️ add/remove */}

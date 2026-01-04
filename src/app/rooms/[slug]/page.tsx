@@ -120,7 +120,7 @@ export default function RoomDetailPage() {
             <div className="overflow-hidden rounded-2xl" ref={emblaRef}>
               <div className="flex">
                 {allImages.map((img) => (
-                  <div key={img.id} className="relative h-[400px] flex-[0_0_100%]">
+                  <div key={img.id} className="relative h-100 flex-[0_0_100%]">
                     <Image
                       src={img.image}
                       alt={img.alt_text || room.title}
@@ -323,7 +323,13 @@ export default function RoomDetailPage() {
 
         <div className="card p-4">
           <h3 className="font-bold">Availability</h3>
-          <p className="mt-2 text-sm text-black/80">Available now ✅</p>
+          <p className="mt-2 text-sm text-black/80">
+            {room.is_taken ? (
+              <span className="badge badge-warning">Booked</span>
+            ) : (
+              <span className="text-green-600 font-medium">Available now ✅</span>
+            )}
+          </p>
         </div>
       </div>
 
